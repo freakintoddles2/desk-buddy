@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panels screen options</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --ink-faint: #4a505c; --accent: #4f8cff; --ok: #3ecf8e; --today: #f5b942;
+        --size: 300px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1220px; }
+    .lead { color: var(--page-muted); margin: 0 auto 24px; max-width: 1220px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; max-width: 1220px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .card h2 { font-size: 15px; margin: 4px 0 0; align-self: flex-start; }
+    .card ul { margin: 0; padding-left: 18px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .ctl { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .ctl button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--page-text); cursor: pointer; }
+    .ctl button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .device {
+        width: calc(var(--size) + 26px); height: calc(var(--size) + 26px); border-radius: 50%;
+        background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f; display: grid; place-items: center;
+    }
+    .screen {
+        position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden;
+        background: var(--screen); color: var(--ink); box-shadow: inset 0 0 0 3px #000; user-select: none; touch-action: none;
+    }
+    .top { position: absolute; left: 0; right: 0; top: 11%; text-align: center; color: var(--ink-dim); font-size: calc(var(--size) * .036); letter-spacing: .16em; text-transform: uppercase; }
+    .foot { position: absolute; left: 0; right: 0; bottom: 10%; text-align: center; color: var(--ink-dim); font-size: calc(var(--size) * .036); }
+    .chip { display: inline-block; margin-top: 6px; padding: 4px 14px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px var(--ink-faint); color: var(--ink); font-size: calc(var(--size) * .042); cursor: pointer; }
+    .chip.sel { box-shadow: inset 0 0 0 1.5px var(--accent); }
+    .chip.primary { box-shadow: inset 0 0 0 1.5px var(--accent); background: rgba(79, 140, 255, .14); }
+
+    .rows { position: absolute; left: 0; right: 0; top: 19%; height: 57.5%; overflow: hidden; }
+    .screen:has([data-done]) .foot { bottom: 6%; }
+    .rows-in { position: absolute; left: 0; right: 0; top: 0; transition: transform .18s ease-out; }
+    .row {
+        position: absolute; left: 50%; width: 78%; margin-left: -39%; height: calc(var(--size) * .1);
+        display: flex; align-items: center; gap: 8px; padding: 0 4%; border-radius: 999px;
+        font-size: calc(var(--size) * .05); color: var(--ink); cursor: pointer; transition: top .18s ease-out;
+    }
+    .row.sel { box-shadow: inset 0 0 0 1.5px var(--accent); background: rgba(79, 140, 255, .06); }
+    .row.lift { background: rgba(79, 140, 255, .2); box-shadow: inset 0 0 0 2px var(--accent), 0 6px 18px rgba(0, 0, 0, .6); z-index: 2; }
+    .row .pos { width: 1.3em; text-align: right; color: var(--ink-dim); font-size: .72em; font-variant-numeric: tabular-nums; }
+    .row .nm { flex: 1; }
+    .row.off .nm { color: var(--ink-dim); }
+    .row .lock { color: var(--ink-dim); font-size: .62em; }
+    .row .arr {
+        display: grid; place-items: center; width: calc(var(--size) * .075); height: calc(var(--size) * .075); border-radius: 50%;
+        font-size: .6em; color: var(--ink); background: rgba(255, 255, 255, .08); cursor: pointer;
+    }
+    .row .arr:active { background: rgba(79, 140, 255, .4); }
+    .row .arr.dis { opacity: .2; cursor: default; }
+    .row .grip { color: var(--ink-dim); font-size: .8em; letter-spacing: -2px; padding: 0 2px; cursor: grab; }
+    /* now: today's list with distance fading */
+    .now .row.far1 { opacity: .7; font-size: calc(var(--size) * .045); }
+    .now .row.far2 { opacity: .4; font-size: calc(var(--size) * .04); }
+    .now .row .tag { font-size: .55em; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--today); border: 1px solid rgba(245, 185, 66, .6); border-radius: 999px; padding: 1px 6px; }
+    .now .row.off .nm { text-decoration: line-through; }
+
+    /* the switch */
+    .sw { width: calc(var(--size) * .085); height: calc(var(--size) * .05); border-radius: 999px; background: #2a2f3a; position: relative; flex: none; transition: background .15s; }
+    .sw::after { content: ''; position: absolute; top: 12%; left: 8%; width: 38%; height: 76%; border-radius: 50%; background: #cfd5df; transition: left .15s; }
+    .sw.on { background: var(--ok); }
+    .sw.on::after { left: 54%; background: #fff; }
+    .sw.locked { opacity: .35; }
+    /* eye */
+    .eye { width: calc(var(--size) * .055); height: calc(var(--size) * .055); flex: none; color: var(--ink); }
+    .eye.off { color: var(--ink-faint); }
+    .eye svg { width: 100%; height: 100%; }
+    .ln { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* the old detail screen (Now, step 2) */
+    .detail { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+    .detail .nm { font-size: calc(var(--size) * .085); font-weight: 600; }
+    .detail .st { color: var(--ink-dim); font-size: calc(var(--size) * .045); }
+    .detail .chips { display: flex; gap: 8px; margin-top: 8px; }
+    .toast { position: absolute; left: 50%; bottom: 20%; transform: translateX(-50%); padding: 4px 12px; border-radius: 999px; background: #1c2230; color: var(--ink); font-size: calc(var(--size) * .04); opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+    .toast.show { opacity: 1; }
+    kbd { font: 11px/1 ui-monospace, monospace; padding: 2px 5px; border: 1px solid var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Panels screen: show, hide and reorder</h1>
+<p class="lead">All three options drop the distance fading: every row is the same size and brightness, and only the selected row has an outline. Use the buttons under each device as the knob (<kbd>Turn up</kbd>, <kbd>Turn down</kbd>, <kbd>Press</kbd>), or tap rows directly. Home and Settings can't be hidden.</p>
+
+<div class="grid">
+    <div class="card">
+        <h2>Now (for reference)</h2>
+        <div class="device"><div class="screen now" data-opt="now"></div></div>
+        <div class="ctl" data-for="now"></div>
+        <ul>
+            <li>Rows fade and shrink as they move away from the selection.</li>
+            <li>Hiding a panel: press, then Hide on a second screen.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>A: switches, plus a Reorder mode</h2>
+        <div class="device"><div class="screen a" data-opt="a"></div></div>
+        <div class="ctl" data-for="a"></div>
+        <ul>
+            <li>Press (or tap a row) flips its switch: one step to show or hide.</li>
+            <li>The last row is <b>Reorder</b>: rows get grips, press picks one up, turn to move, press to drop. Hold or Done leaves.</li>
+            <li>Clear and familiar (phone settings). Moving is a separate mode, two presses away.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>A2: switches, Reorder mode with arrows</h2>
+        <div class="device"><div class="screen a2" data-opt="a2"></div></div>
+        <div class="ctl" data-for="a2"></div>
+        <ul>
+            <li>The list is the same as A: press or tap flips the switch, and the last row is <b>Reorder…</b>.</li>
+            <li>In Reorder, each row gets ▲ and ▼. Tap one to move the row one place; the ends grey out.</li>
+            <li>The knob still works there: press to pick a row up, turn to move it, press to drop it (the arrows are too small to aim at with the knob).</li>
+            <li>Hold or Done leaves Reorder.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>B: switches, plus press-and-turn to move</h2>
+        <div class="device"><div class="screen b" data-opt="b"></div></div>
+        <div class="ctl" data-for="b"></div>
+        <ul>
+            <li>Press flips the switch, as in A.</li>
+            <li>Moving: hold the knob down and turn it (the row lifts), or drag a row by its grip with a finger. No mode at all.</li>
+            <li>Fastest, but press-and-turn is new on this device and nothing on screen teaches it except the foot hint. In the mock-up, <kbd>Hold + turn</kbd> stands in for it.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>C: eye icon, press to pick up</h2>
+        <div class="device"><div class="screen c" data-opt="c"></div></div>
+        <div class="ctl" data-for="c"></div>
+        <ul>
+            <li>Tap the eye to show or hide; tap the name (or press the knob) to pick the row up and move it, press again to drop.</li>
+            <li>The knob alone can't hide without a second target, so the knob's press moves, and the eye is touch-only. Knob users would turn to the eye with an extra step (shown: turning while a row is selected moves between name and eye).</li>
+            <li>Most compact; splits roles between touch and knob, which the rest of the device avoids.</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+(() => {
+    const NAMES = ['Home', 'Weather', 'World', 'Focus', 'Timers', 'Breathe', 'Habits', 'Days', 'Play', 'Settings'];
+    const LOCKED = new Set(['Home', 'Settings']);
+    const EYE_ON = '<svg viewBox="0 0 24 24"><path class="ln" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle class="ln" cx="12" cy="12" r="3"/></svg>';
+    const EYE_OFF = '<svg viewBox="0 0 24 24"><path class="ln" d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/></svg>';
+
+    const mk = () => ({ order: NAMES.slice(), hidden: new Set(['Breathe']), idx: 1, mode: 'list', lifted: false, part: 'name', detailSel: 0, holding: false, toast: '' });
+    const S = { now: mk(), a: mk(), a2: mk(), b: mk(), c: mk() };
+    const isA = (opt) => opt === 'a' || opt === 'a2';
+    const ROW_H = 0.115;   // fraction of --size per row
+    const SIZE = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size'));
+
+    const toast = (opt, t) => {
+        const st = S[opt];
+        st.toast = t; render(opt);
+        clearTimeout(st.tt); st.tt = setTimeout(() => { st.toast = ''; render(opt); }, 1200);
+    };
+    const toggle = (opt, name) => {
+        const st = S[opt];
+        if (LOCKED.has(name)) { toast(opt, `${name} is always shown`); return; }
+        if (st.hidden.has(name)) st.hidden.delete(name); else st.hidden.add(name);
+        toast(opt, `${name} ${st.hidden.has(name) ? 'hidden' : 'shown'}`);
+    };
+    const swap = (st, j) => {
+        const o = st.order;
+        [o[st.idx], o[j]] = [o[j], o[st.idx]];
+        st.idx = j;
+    };
+    const items = (opt) => {
+        const st = S[opt];
+        return isA(opt) && st.mode === 'list' ? [...st.order, '__reorder'] : st.order;
+    };
+
+    const rowHtml = (opt, name, k) => {
+        const st = S[opt], sel = k === st.idx, off = st.hidden.has(name), locked = LOCKED.has(name);
+        const top = k * ROW_H * SIZE();
+        if (name === '__reorder') return `<div class="row ${sel ? 'sel' : ''}" data-k="${k}" style="top:${top}px"><span class="pos"></span><span class="nm" style="color:var(--accent)">Reorder…</span></div>`;
+        const dist = Math.abs(k - st.idx);
+        const lift = (isA(opt) && st.mode === 'reorder' && sel && st.lifted) || (opt === 'b' && sel && st.holding) || (opt === 'c' && sel && st.lifted);
+        let right = '';
+        if (opt === 'now') right = off ? '<span class="tag">Hidden</span>' : '';
+        else if (opt === 'a2' && st.mode === 'reorder') right = `<span class="arr ${k === 0 ? 'dis' : ''}" data-up="${k}">▲</span><span class="arr ${k === st.order.length - 1 ? 'dis' : ''}" data-dn="${k}">▼</span>`;
+        else if (isA(opt)) right = st.mode === 'reorder' ? '<span class="grip">⋮⋮</span>' : `<span class="sw ${off ? '' : 'on'} ${locked ? 'locked' : ''}"></span>`;
+        else if (opt === 'b') right = `<span class="grip" data-grip="${k}">⋮⋮</span><span class="sw ${off ? '' : 'on'} ${locked ? 'locked' : ''}"></span>`;
+        else if (opt === 'c') right = locked ? '<span class="lock">always</span>' : `<span class="eye ${off ? 'off' : ''}" data-eye="${k}" style="${sel && st.part === 'eye' ? 'outline:1.5px solid var(--accent);border-radius:50%;outline-offset:3px' : ''}">${off ? EYE_OFF : EYE_ON}</span>`;
+        const cls = ['row', sel && !(opt === 'c' && st.part === 'eye') ? 'sel' : '', off ? 'off' : '', lift ? 'lift' : '', opt === 'now' && dist === 1 ? 'far1' : '', opt === 'now' && dist >= 2 ? 'far2' : ''].join(' ');
+        return `<div class="${cls}" data-k="${k}" style="top:${top}px"><span class="pos">${k + 1}</span><span class="nm">${name}</span>${right}</div>`;
+    };
+
+    const render = (opt) => {
+        const st = S[opt], scr = document.querySelector(`.screen[data-opt="${opt}"]`);
+        const its = items(opt);
+        st.idx = Math.max(0, Math.min(its.length - 1, st.idx));
+        if (opt === 'now' && st.mode === 'detail') {
+            const name = st.order[st.idx], locked = LOCKED.has(name);
+            const chips = [locked ? null : (st.hidden.has(name) ? 'Show' : 'Hide'), 'Move'].filter(Boolean);
+            st.detailSel = Math.min(st.detailSel, chips.length - 1);
+            scr.innerHTML = `<div class="top">Panels</div><div class="detail"><div class="nm">${name}</div><div class="st">${locked ? 'Always shown' : st.hidden.has(name) ? 'Hidden' : 'Shown'}</div>
+                <div class="chips">${chips.map((c, i) => `<span class="chip ${i === st.detailSel ? 'primary' : ''}" data-chip="${c}">${c}</span>`).join('')}</div></div>
+                <div class="toast ${st.toast ? 'show' : ''}">${st.toast}</div>`;
+            return;
+        }
+        const visible = 5, H = ROW_H * SIZE();
+        const first = Math.max(0, Math.min(st.idx - 2, its.length - visible));
+        const shown = st.order.filter((n) => !st.hidden.has(n)).length;
+        let title = 'Panels', foot = `${shown} shown · ${st.hidden.size} hidden`;
+        if (opt === 'now' && st.lifted) { title = `Moving ${st.order[st.idx]}`; foot = 'Rotate to move, press to place'; }
+        if (isA(opt) && st.mode === 'reorder') { title = 'Reorder'; foot = st.lifted ? 'Turn to move, press to drop' : opt === 'a2' ? 'Tap the arrows to move' : 'Press to pick up'; }
+        if (opt === 'b') foot = st.holding ? 'Turn to move, let go to drop' : 'Hold and turn to move';
+        if (opt === 'c') foot = st.lifted ? 'Turn to move, press to drop' : st.part === 'eye' ? 'Press to show or hide' : 'Press to move · tap the eye to hide';
+        const doneChip = isA(opt) && st.mode === 'reorder' ? '<div><span class="chip primary" data-done="1">Done</span></div>' : '';
+        scr.innerHTML = `<div class="top">${title}</div>
+            <div class="rows"><div class="rows-in" style="transform:translateY(${-first * H}px)">${its.map((n, k) => rowHtml(opt, n, k)).join('')}</div></div>
+            <div class="foot">${foot}${doneChip}</div>
+            <div class="toast ${st.toast ? 'show' : ''}">${st.toast}</div>`;
+    };
+
+    // The knob.
+    const turn = (opt, dir) => {
+        const st = S[opt], its = items(opt);
+        if (opt === 'now' && st.mode === 'detail') { st.detailSel = Math.max(0, Math.min(1, st.detailSel + dir)); return render(opt); }
+        if (opt === 'c' && !st.lifted) {
+            // name -> eye -> next row's name ...
+            const name = st.order[st.idx];
+            if (dir > 0 && st.part === 'name' && !LOCKED.has(name)) { st.part = 'eye'; return render(opt); }
+            if (dir < 0 && st.part === 'eye') { st.part = 'name'; return render(opt); }
+            const j = Math.max(0, Math.min(its.length - 1, st.idx + dir));
+            if (j !== st.idx) { st.idx = j; st.part = dir < 0 && !LOCKED.has(st.order[j]) ? 'eye' : 'name'; }
+            return render(opt);
+        }
+        const j = Math.max(0, Math.min(its.length - 1, st.idx + dir));
+        const moving = (opt === 'now' && st.lifted) || (isA(opt) && st.mode === 'reorder' && st.lifted) || (opt === 'b' && st.holding) || (opt === 'c' && st.lifted);
+        if (moving && j !== st.idx && its[j] !== '__reorder') swap(st, j);
+        else if (!moving) st.idx = j;
+        render(opt);
+    };
+    const press = (opt) => {
+        const st = S[opt], name = items(opt)[st.idx];
+        if (opt === 'now') {
+            if (st.lifted) { st.lifted = false; toast(opt, `${st.order[st.idx]} placed`); return; }
+            if (st.mode === 'list') { st.mode = 'detail'; st.detailSel = 0; return render(opt); }
+            const chips = [LOCKED.has(name) ? null : 'toggle', 'move'].filter(Boolean);
+            const c = chips[st.detailSel];
+            st.mode = 'list';
+            if (c === 'toggle') toggle(opt, name); else { st.lifted = true; render(opt); }
+            return;
+        }
+        if (isA(opt)) {
+            if (name === '__reorder') { st.mode = 'reorder'; st.idx = 0; st.lifted = false; return render(opt); }
+            if (st.mode === 'reorder') { st.lifted = !st.lifted; return render(opt); }
+            return toggle(opt, name);
+        }
+        if (opt === 'b') return toggle(opt, name);
+        if (opt === 'c') {
+            if (st.part === 'eye') return toggle(opt, name);
+            st.lifted = !st.lifted;
+            if (!st.lifted) toast(opt, `${name} placed`); else render(opt);
+        }
+    };
+    const hold = (opt) => {   // hold = back
+        const st = S[opt];
+        if (isA(opt) && st.mode === 'reorder') { st.mode = 'list'; st.lifted = false; st.idx = st.order.length; return render(opt); }
+        if (opt === 'now' && st.mode === 'detail') { st.mode = 'list'; return render(opt); }
+        st.lifted = false; render(opt);
+    };
+
+    const controls = (opt) => {
+        const ctl = document.querySelector(`.ctl[data-for="${opt}"]`);
+        const st = S[opt];
+        const b = [['up', 'Turn up'], ['down', 'Turn down'], ['press', 'Press'], ['hold', 'Hold (back)']];
+        if (opt === 'b') b.splice(3, 0, ['grab', st.holding ? 'Let go' : 'Hold + turn']);
+        ctl.innerHTML = b.map(([k, t]) => `<button data-k="${k}" class="${k === 'grab' && st.holding ? 'on' : ''}">${t}</button>`).join('');
+    };
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.ctl button');
+        if (btn) {
+            const opt = btn.parentElement.dataset.for, k = btn.dataset.k, st = S[opt];
+            if (k === 'up') turn(opt, -1);
+            else if (k === 'down') turn(opt, 1);
+            else if (k === 'press') press(opt);
+            else if (k === 'hold') hold(opt);
+            else if (k === 'grab') { st.holding = !st.holding; if (!st.holding) toast(opt, `${st.order[st.idx]} placed`); render(opt); }
+            controls(opt);
+            return;
+        }
+        const scr = e.target.closest('.screen');
+        if (!scr || scr.dataset.dragged) { if (scr) delete scr.dataset.dragged; return; }
+        const opt = scr.dataset.opt, st = S[opt];
+        if (e.target.closest('[data-done]')) return hold(opt);
+        const chip = e.target.closest('[data-chip]');
+        if (chip) { st.detailSel = [...chip.parentElement.children].indexOf(chip); return press(opt); }
+        const arr = e.target.closest('[data-up], [data-dn]');
+        if (arr) {
+            if (arr.classList.contains('dis')) return;
+            const k = +(arr.dataset.up ?? arr.dataset.dn), j = k + (arr.dataset.up !== undefined ? -1 : 1);
+            st.idx = k; swap(st, j); st.lifted = false; render(opt);
+            return;
+        }
+        const eye = e.target.closest('[data-eye]');
+        if (eye) { st.idx = +eye.dataset.eye; return toggle(opt, st.order[st.idx]); }
+        const row = e.target.closest('.row');
+        if (row) {
+            const k = +row.dataset.k;
+            if (opt === 'c') st.part = 'name';
+            if (k === st.idx || opt !== 'now') { st.idx = k; press(opt); } else { st.idx = k; render(opt); }
+        }
+    });
+    // B: drag a row by its grip.
+    document.addEventListener('pointerdown', (e) => {
+        const g = e.target.closest('[data-grip]');
+        if (!g) return;
+        const scr = g.closest('.screen'), opt = scr.dataset.opt, st = S[opt];
+        st.idx = +g.dataset.grip; st.holding = true; render(opt);
+        const y0 = e.clientY, H = ROW_H * SIZE();
+        let moved = 0;
+        const mv = (ev) => {
+            const want = Math.round((ev.clientY - y0) / H);
+            while (moved < want && st.idx < st.order.length - 1) { swap(st, st.idx + 1); moved++; render(opt); }
+            while (moved > want && st.idx > 0) { swap(st, st.idx - 1); moved--; render(opt); }
+        };
+        const up = () => { st.holding = false; scr.dataset.dragged = '1'; toast(opt, `${st.order[st.idx]} placed`); removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
+        addEventListener('pointermove', mv); addEventListener('pointerup', up);
+        e.preventDefault();
+    });
+    Object.keys(S).forEach((o) => { render(o); controls(o); });
+})();
+</script>
+</body>
+</html>

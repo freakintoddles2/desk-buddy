@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back affordance options</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --ink-faint: #4a505c; --accent: #4f8cff; --ok: #3fcf7f;
+        --size: 290px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1280px; }
+    .lead { color: var(--page-muted); margin: 0 auto 24px; max-width: 1280px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; max-width: 1280px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .card h2 { font-size: 15px; margin: 4px 0 0; align-self: flex-start; }
+    .card ul { margin: 0; padding-left: 18px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .ctl { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .ctl button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--page-text); cursor: pointer; }
+    .ctl button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .device {
+        width: calc(var(--size) + 24px); height: calc(var(--size) + 24px); border-radius: 50%;
+        background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f; display: grid; place-items: center;
+    }
+    .screen { position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden; background: var(--screen); color: var(--ink); box-shadow: inset 0 0 0 3px #000; user-select: none; }
+
+    /* title */
+    .top { position: absolute; left: 50%; top: 18%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 4px; color: var(--ink-dim); font-size: calc(var(--size) * .038); letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; padding: 4px 10px; border-radius: 999px; }
+    .top .chev { width: calc(var(--size) * .045); height: calc(var(--size) * .045); margin-left: -4px; }
+    .top .chev path { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .top.back { cursor: pointer; color: #c9cfda; }
+    .top.back:active, .top.back.flash { background: rgba(79, 140, 255, .2); color: #fff; }
+    /* A2: a round button left of the title */
+    .bbtn { position: absolute; top: 18%; transform: translateY(-50%); width: calc(var(--size) * .11); height: calc(var(--size) * .11); border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .07); color: #c9cfda; cursor: pointer; }
+    .bbtn svg { width: 45%; height: 45%; }
+    .bbtn path { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .bbtn:active, .bbtn.flash { background: rgba(79, 140, 255, .35); color: #fff; }
+
+    /* list rows (Panels / Auto brightness) */
+    .rows { position: absolute; left: 0; right: 0; top: 27%; display: flex; flex-direction: column; align-items: center; gap: calc(var(--size) * .012); }
+    .row { width: 72%; height: calc(var(--size) * .1); display: flex; align-items: center; gap: 8px; padding: 0 4%; border-radius: 999px; font-size: calc(var(--size) * .047); }
+    .row.sel { box-shadow: inset 0 0 0 2px var(--accent); background: rgba(79, 140, 255, .06); }
+    .row .pos { width: 1.3em; text-align: right; color: var(--ink-dim); font-size: .68em; }
+    .row .nm { flex: 1; }
+    .row .v { color: var(--ink-dim); font-size: .8em; }
+    .row .sub { display: block; color: var(--ink-dim); font-size: .62em; }
+    .sw { width: calc(var(--size) * .1); height: calc(var(--size) * .058); border-radius: 999px; background: var(--ok); position: relative; flex: none; }
+    .sw::after { content: ''; position: absolute; top: 11%; left: 53%; width: 40%; height: 78%; border-radius: 50%; background: #fff; }
+    .sw.locked { opacity: .4; }
+    .chip { display: inline-block; padding: 4px 14px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px var(--ink-faint); color: var(--ink-dim); font-size: calc(var(--size) * .045); cursor: pointer; }
+    .chip.primary { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--ink); }
+    .foot { position: absolute; left: 0; right: 0; bottom: 9%; display: flex; justify-content: center; gap: 8px; }
+
+    /* dial screen (Brightness) */
+    .dial { position: absolute; inset: 3.5%; border-radius: 50%; border: calc(var(--size) * .018) solid rgba(255, 255, 255, .08); }
+    .dial::after { content: ''; position: absolute; inset: calc(var(--size) * -.018); border-radius: 50%; border: calc(var(--size) * .018) solid var(--accent);
+                   -webkit-mask: conic-gradient(#000 0 288deg, transparent 288deg); mask: conic-gradient(#000 0 288deg, transparent 288deg); }
+    .dcap { position: absolute; left: 0; right: 0; top: 29%; display: flex; justify-content: center; }
+    .dcap .top { position: static; transform: none; }
+    .dnum { position: absolute; left: 0; right: 0; top: 37%; text-align: center; font-size: calc(var(--size) * .2); line-height: 1; }
+    .dnum small { font-size: .3em; color: var(--ink-dim); }
+    .dsub { position: absolute; left: 0; right: 0; top: 60%; text-align: center; color: var(--ink-dim); font-size: calc(var(--size) * .045); }
+    .dfoot { position: absolute; left: 0; right: 0; top: 69%; display: flex; justify-content: center; gap: 8px; }
+
+    /* B: first-time hint */
+    .hint { position: absolute; left: 0; right: 0; top: 26.5%; text-align: center; font-size: calc(var(--size) * .04); color: var(--accent); opacity: 0; transition: opacity .4s; pointer-events: none; }
+    .hint.show { opacity: 1; }
+    .edgepeek { position: absolute; left: 0; top: 30%; bottom: 30%; width: 7%; border-radius: 0 999px 999px 0; background: linear-gradient(90deg, rgba(79, 140, 255, .45), transparent); opacity: 0; pointer-events: none; }
+    .edgepeek.go { animation: peek 1.4s ease-out 2; }
+    @keyframes peek { 0% { opacity: 0; transform: translateX(-60%); } 35% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(-20%); } }
+    .hint-shift .rows { top: 32%; }
+
+    .wentback { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(11, 13, 17, .92); color: var(--ink-dim); font-size: calc(var(--size) * .05); opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .wentback.show { opacity: 1; }
+    kbd { font: 11px/1 ui-monospace, monospace; padding: 2px 5px; border: 1px solid var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Going back from a sub-screen</h1>
+<p class="lead">Swipe and knob-hold keep working in every option; these add something you can see. Switch the screen under each device; tap the back control to try it (it flashes "Back to Settings"). Option B replays its hint with <kbd>Show hint</kbd>.</p>
+
+<div class="grid">
+    <div class="card">
+        <h2>Now</h2>
+        <div class="device"><div class="screen" data-opt="now"></div></div>
+        <div class="ctl" data-for="now"></div>
+        <ul><li>Nothing on screen says how to leave; only swipe or hold.</li></ul>
+    </div>
+    <div class="card">
+        <h2>A: chevron in the title (recommended)</h2>
+        <div class="device"><div class="screen" data-opt="a"></div></div>
+        <div class="ctl" data-for="a"></div>
+        <ul>
+            <li>"‹ PANELS": the title is the back button, as on phones. No extra space.</li>
+            <li>Slightly brighter than a plain title so it reads as tappable; lights up on touch.</li>
+            <li>One change in the shared title helper covers every sub-screen.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>A2: round back button beside the title</h2>
+        <div class="device"><div class="screen" data-opt="a2"></div></div>
+        <div class="ctl" data-for="a2"></div>
+        <ul>
+            <li>A separate 32 px button left of the title: a bigger, clearer target than the title text.</li>
+            <li>Takes room on the round screen's top edge; long titles push it outward toward the curve.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>B: hint the first few times</h2>
+        <div class="device"><div class="screen" data-opt="b"></div></div>
+        <div class="ctl" data-for="b"></div>
+        <ul>
+            <li>"Swipe or hold to go back", plus a glow that slides in from the left edge, for ~2.5 s.</li>
+            <li>Shown the first 3 times any sub-screen opens, then never again (a counter in flash).</li>
+            <li>Teaches the gestures (knob too); nothing permanent on screen. Can be combined with A.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>C: Back chip at the bottom</h2>
+        <div class="device"><div class="screen" data-opt="c"></div></div>
+        <div class="ctl" data-for="c"></div>
+        <ul>
+            <li>Most obvious, and the knob can reach it.</li>
+            <li>Costs the bottom row; screens that already have Done get two exits (Brightness keeps only Done).</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+(() => {
+    const CHEV = '<svg class="chev" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
+    const BCHEV = '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
+    const SCREENS = { panels: 'Panels', auto: 'Auto brightness', bright: 'Brightness' };
+    const state = { now: 'panels', a: 'panels', a2: 'panels', b: 'panels', c: 'panels' };
+
+    const title = (opt, text) => {
+        if (opt === 'a') return `<div class="top back" data-back>${CHEV}${text}</div>`;
+        return `<div class="top">${text}</div>`;
+    };
+    const backBtn = (opt, text) => {
+        if (opt !== 'a2') return '';
+        const w = text.length * 0.0245 + 0.06;   // rough title width as a fraction of the screen
+        return `<div class="bbtn" data-back style="left:calc(50% - ${(w / 2 + 0.14) * 100}%)">${BCHEV}</div>`;
+    };
+    const body = (scr) => {
+        if (scr === 'panels') return `<div class="rows">
+            <div class="row sel"><span class="pos">1</span><span class="nm">Home</span><span class="sw locked"></span></div>
+            <div class="row"><span class="pos">2</span><span class="nm">Weather</span><span class="sw"></span></div>
+            <div class="row"><span class="pos">3</span><span class="nm">World</span><span class="sw"></span></div>
+            <div class="row"><span class="pos">4</span><span class="nm">Focus</span><span class="sw"></span></div></div>`;
+        if (scr === 'auto') return `<div class="rows">
+            <div class="row sel"><span class="nm">Auto brightness<span class="sub">Daytime, 80% now</span></span><span class="v">On</span></div>
+            <div class="row"><span class="nm">Wake time</span><span class="v">6:00 AM</span></div>
+            <div class="row"><span class="nm">Bedtime</span><span class="v">10:00 PM</span></div>
+            <div class="row"><span class="nm">Day max</span><span class="v">80%</span></div></div>`;
+        return '';
+    };
+    const render = (opt) => {
+        const scr = state[opt], el = document.querySelector(`.screen[data-opt="${opt}"]`);
+        const name = SCREENS[scr];
+        let html;
+        if (scr === 'bright') {
+            // The dial screens keep their caps label inside the dial; the chevron goes on it.
+            const cap = opt === 'a' ? `<div class="top back" data-back>${CHEV}Brightness</div>` : `<div class="top">Brightness</div>`;
+            html = `<div class="dial"></div><div class="dcap">${cap}</div>
+                <div class="dnum">80<small>%</small></div><div class="dsub">Auto brightness</div>
+                <div class="dfoot"><span class="chip primary" data-back>Done</span></div>`;
+            if (opt === 'a2') html = html.replace('<div class="dcap">', `<div class="bbtn" data-back style="left:20%;top:31%">${BCHEV}</div><div class="dcap">`);
+        } else {
+            html = title(opt, name) + backBtn(opt, name) + body(scr);
+            if (opt === 'c') html += `<div class="foot"><span class="chip" data-back>‹ Back</span>${scr === 'panels' ? '<span class="chip">Reorder</span>' : ''}</div>`;
+            else if (scr === 'panels') html += `<div class="foot"><span class="chip">Reorder</span></div>`;
+        }
+        if (opt === 'b') html += `<div class="hint">Swipe or hold to go back</div><div class="edgepeek"></div>`;
+        html += `<div class="wentback">Back to Settings</div>`;
+        el.innerHTML = html;
+        el.classList.toggle('hint-shift', opt === 'b' && scr !== 'bright');
+        if (opt === 'b') playHint(el);
+        const ctl = document.querySelector(`.ctl[data-for="${opt}"]`);
+        ctl.innerHTML = Object.entries(SCREENS).map(([k, t]) => `<button class="${k === scr ? 'on' : ''}" data-s="${k}">${t}</button>`).join('')
+            + (opt === 'b' ? '<button data-hint="1">Show hint</button>' : '');
+    };
+    const playHint = (el) => {
+        const h = el.querySelector('.hint'), p = el.querySelector('.edgepeek');
+        if (!h) return;
+        h.classList.remove('show'); p.classList.remove('go');
+        void p.offsetWidth;
+        requestAnimationFrame(() => { h.classList.add('show'); p.classList.add('go'); });
+        clearTimeout(el._t); el._t = setTimeout(() => h.classList.remove('show'), 2600);
+    };
+    document.addEventListener('click', (e) => {
+        const b = e.target.closest('.ctl button');
+        if (b) {
+            const opt = b.parentElement.dataset.for;
+            if (b.dataset.hint) return playHint(document.querySelector(`.screen[data-opt="${opt}"]`));
+            state[opt] = b.dataset.s; render(opt); return;
+        }
+        const back = e.target.closest('[data-back]');
+        if (back) {
+            const scr = back.closest('.screen'), wb = scr.querySelector('.wentback');
+            back.classList.add('flash'); wb.classList.add('show');
+            setTimeout(() => { back.classList.remove('flash'); wb.classList.remove('show'); }, 900);
+        }
+    });
+    Object.keys(state).forEach(render);
+})();
+</script>
+</body>
+</html>

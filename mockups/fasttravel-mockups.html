@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fast travel styles</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --accent: #4f8cff;
+        --size: 340px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1180px; }
+    .lead { color: var(--page-muted); margin: 0 auto 24px; max-width: 1180px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr)); gap: 20px; max-width: 1180px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .card h2 { font-size: 15px; margin: 14px 0 4px; align-self: flex-start; }
+    .card p { margin: 0 0 6px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+
+    .device {
+        width: calc(var(--size) + 28px); height: calc(var(--size) + 28px); border-radius: 50%;
+        background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f;
+        display: grid; place-items: center; outline: none;
+    }
+    .device:focus-visible { box-shadow: 0 10px 30px rgba(0, 0, 0, .3), 0 0 0 3px var(--accent); }
+    .screen {
+        position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden;
+        background: radial-gradient(circle at 50% 30%, #1a2030, #0d1016 72%); color: var(--ink);
+        box-shadow: inset 0 0 0 3px #000; touch-action: none; user-select: none; cursor: grab;
+    }
+    .hint { color: var(--page-muted); font-size: 12px; margin-top: 8px; }
+
+    /* shared pieces; each variant positions them */
+    .it { position: absolute; left: 50%; top: 0; display: grid; place-items: center; cursor: pointer; color: rgba(242, 244, 248, .72); }
+    .it svg { width: 46%; height: 46%; }
+    .ln { fill: none; stroke: currentColor; stroke-width: .42; stroke-linecap: round; stroke-linejoin: round; }
+    .knob { fill: #121620; }
+    .face { fill: currentColor; }
+    .it.sel { color: #fff; }
+    .here { position: absolute; left: 50%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: var(--ink-dim); }
+    .new { position: absolute; width: 9px; height: 9px; border-radius: 50%; }
+    .name { position: absolute; left: 0; right: 0; text-align: center; font-weight: 650; color: #fff; pointer-events: none; }
+    .status { position: absolute; left: 12%; right: 12%; text-align: center; color: var(--ink-dim); pointer-events: none; }
+    .dots { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 5px; pointer-events: none; }
+    .dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .18); transition: background .12s, transform .12s; }
+    .dots i.here { position: static; margin: 0; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .55); background: transparent; }
+    .dots i.sel { background: var(--accent); transform: scale(1.35); box-shadow: none; }
+    .handle { position: absolute; bottom: 5%; left: 50%; width: 12%; height: 4px; margin-left: -6%; border-radius: 3px; background: rgba(255, 255, 255, .25); }
+
+    /* disc cards (A, B, E) */
+    .disc { border-radius: 50%; background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); transition: background .15s, box-shadow .15s; }
+    .disc.sel { background: rgba(79, 140, 255, .18); box-shadow: inset 0 0 0 2px rgba(79, 140, 255, .75), 0 0 22px rgba(79, 140, 255, .35); }
+    .disc.sel .knob { fill: #17213a; }
+
+    /* B: name sits inside the hero disc */
+    .v-b .it { align-content: center; gap: 2%; }
+    .v-b .it { grid-template-rows: auto auto; }
+    .v-b .it svg { width: calc(var(--size) * .2); height: calc(var(--size) * .2); }
+    .v-b .it .in { font-weight: 650; font-size: calc(var(--size) * .062); color: #fff; opacity: 0; transition: opacity .12s; }
+    .v-b .it.sel .in { opacity: 1; }
+
+    /* C: page per panel, no disc; big glyph with a soft glow */
+    .v-c .it svg { width: 100%; height: 100%; }
+    .v-c .it .ln { stroke-width: .3; }
+    .v-c .it.sel { filter: drop-shadow(0 0 14px rgba(79, 140, 255, .55)); color: #fff; }
+
+    /* D: bare icons, accent bar under the chosen one */
+    .v-d .it svg { width: 82%; height: 82%; }
+    .v-d .it .ln { stroke-width: .36; }
+    .v-d .it.sel { filter: drop-shadow(0 0 12px rgba(79, 140, 255, .5)); }
+    .v-d .bar { position: absolute; left: 50%; height: 4px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 10px rgba(79, 140, 255, .7); pointer-events: none; }
+
+    /* E: index strip of every panel along the bottom */
+    .idx { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: calc(var(--size) * .008); }
+    .idx span { width: calc(var(--size) * .062); height: calc(var(--size) * .062); display: grid; place-items: center; border-radius: 50%; color: rgba(242, 244, 248, .4); cursor: pointer; transition: background .12s, color .12s; }
+    .idx span svg { width: 66%; height: 66%; }
+    .idx span .ln { stroke-width: .55; }
+    .idx span.sel { color: #fff; background: rgba(79, 140, 255, .28); }
+    .idx span.here::after { content: ""; position: absolute; }
+</style>
+</head>
+<body>
+    <h1>Fast travel tray: layout options</h1>
+    <p class="lead">Each device shows the tray fully pulled down, starting from Home (grey dot = where you came from). Drag or flick sideways to feel the glide, click an icon to centre it, or click a device and use ← →. The glide and throw match the lists.</p>
+    <div class="grid" id="grid"></div>
+
+<script>
+(() => {
+    'use strict';
+    const ICONS = {
+        home: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -2 0 L 0 -1.9 L 2 0 M -1.4 -0.4 V 1.9 H 1.4 V -0.4"/></svg>',
+        world: '<svg viewBox="-3 -3 6 6"><circle class="ln" r="2.1"/><ellipse class="ln" rx="0.9" ry="2.1"/><path class="ln" d="M -2.1 0 H 2.1"/></svg>',
+        weather: '<svg viewBox="-3 -3 6 6"><circle class="ln" cx="-0.6" cy="-0.6" r="1.1"/><path class="ln" d="M -0.6 -2.5 V -2.1 M -2.5 -0.6 H -2.1 M -1.95 -1.95 L -1.7 -1.7 M 0.75 -1.95 L 0.5 -1.7 M -1.5 2 H 1.5 A 1.1 1.1 0 0 0 1.4 -0.1 A 1.5 1.5 0 0 0 -1.3 0.4 A 0.8 0.8 0 0 0 -1.5 2 Z"/></svg>',
+        focus: '<svg viewBox="-3 -3 6 6"><circle class="ln" cx="0" cy="0.3" r="2.1"/><path class="ln" d="M 0 0.3 V -0.9 M -0.6 -2.5 H 0.6"/></svg>',
+        timers: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -1.5 -2.1 H 1.5 M -1.5 2.1 H 1.5 M -1.1 -2.1 C -1.1 -0.6 1.1 0.6 1.1 2.1 M 1.1 -2.1 C 1.1 -0.6 -1.1 0.6 -1.1 2.1"/></svg>',
+        breathe: '<svg viewBox="-3 -3 6 6"><circle class="ln" r="2.1"/><circle class="ln" r="0.9"/></svg>',
+        habits: '<svg viewBox="-3 -3 6 6"><rect class="ln" x="-2" y="-2" width="4" height="4" rx=".9"/><path class="ln" d="M -0.9 0 L -0.2 0.8 L 1 -0.7"/></svg>',
+        countdowns: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -1.4 2.2 V -2 H 1.7 L 0.9 -1 L 1.7 0 H -1.4"/></svg>',
+        play: '<svg viewBox="-3 -3 6 6"><rect class="ln" x="-2" y="-2" width="4" height="4" rx="1"/><circle class="face" cx="-0.85" cy="-0.85" r=".38"/><circle class="face" cx="0.85" cy="0.85" r=".38"/><circle class="face" r=".38"/></svg>',
+        settings: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -2.1 -1.1 H 2.1 M -2.1 1.1 H 2.1"/><circle class="ln knob" cx="-0.7" cy="-1.1" r=".6"/><circle class="ln knob" cx="0.9" cy="1.1" r=".6"/></svg>',
+    };
+    const PANELS = [
+        ['home', 'Home', '3:42 PM · sunset 5:28'],
+        ['world', 'World', '4 cities · London 10:42 PM'],
+        ['weather', 'Weather', '78° Sunny · high 81°'],
+        ['focus', 'Focus', '18:20 left', 'var(--accent)'],
+        ['timers', 'Timers', '2 running · Tea 3:10', '#f5b942'],
+        ['breathe', 'Breathe', 'Box · 4 min'],
+        ['habits', 'Habits', '2 of 4 done today'],
+        ['countdowns', 'Days', 'Vacation in 12 days'],
+        ['play', 'Play', 'Wheel · Coin · Dice · Pong'],
+        ['settings', 'Settings', 'Wi-Fi · Panels · Time'],
+    ];
+    const HERE = 0;
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+
+    // Variant layouts. All sizes are fractions of the screen width S; y is the item centre.
+    const VARIANTS = [
+        {
+            key: 'a', title: 'A. Bigger row',
+            desc: 'The current design scaled up: no "Go to" title, a disc at 38% of the screen, bigger neighbours, the name at twice the size. About 3½ items visible.',
+            sp: .3, size: .38, y: .44, fall: .27, minS: .45, fade: .38, disc: true,
+            name: { y: .705, f: .085 }, dots: .815, here: true,
+        },
+        {
+            key: 'b', title: 'B. Hero disc',
+            desc: 'One big disc (56%) with the icon and name inside it; neighbours peek in from the bezel on each side. The most "full screen" of the disc styles.',
+            sp: .5, size: .56, y: .47, fall: .38, minS: .4, fade: .3, disc: true, nameInside: true,
+            dots: .84, here: true,
+        },
+        {
+            key: 'c', title: 'C. Panel pages',
+            desc: 'Each panel is its own page: a large glyph, a big name, and one live status line (sample data). Neighbours are pulled in close as smaller, dimmer glyphs on either side.',
+            sp: .3, size: .3, y: .34, fall: .42, minS: .4, fade: .34,
+            name: { y: .6, f: .1 }, status: { y: .7, f: .046 }, dots: .84, here: true,
+        },
+        {
+            key: 'd', title: 'D. Icon strip',
+            desc: 'No discs: bare icons in a row, 3 full plus one at each edge. No underline; the chosen icon is magnified well above its neighbours and glows.',
+            sp: .25, size: .3, y: .43, fall: .36, minS: .38, fade: .3,
+            name: { y: .66, f: .085 }, dots: .78, here: true,
+        },
+        {
+            key: 'e', title: 'E. Big row plus index',
+            desc: 'A large disc row on top, the name, and a strip of every panel along the bottom so you can see where you are going. Tap the strip to jump.',
+            sp: .3, size: .34, y: .38, fall: .27, minS: .45, fade: .38, disc: true,
+            name: { y: .615, f: .08 }, index: .745, here: true,
+        },
+    ];
+
+    const makeDevice = (v) => {
+        const card = el('section', 'card');
+        const device = el('div', 'device');
+        device.tabIndex = 0;
+        const screen = el('div', `screen v-${v.key}`);
+        device.appendChild(screen);
+        card.append(device, el('h2', null, v.title), el('p', null, v.desc));
+
+        const S = () => screen.clientWidth || 340;
+        const n = PANELS.length;
+        const st = { pos: HERE, target: HERE, raf: 0, last: 0, drag: null };
+
+        const items = PANELS.map(([pid, name, , dot], i) => {
+            const it = el('div', `it${v.disc ? ' disc' : ''}`, ICONS[pid]);
+            if (v.nameInside) it.appendChild(el('span', 'in', name));
+            if (dot && i !== HERE) {
+                const d = el('i', 'new');
+                d.style.background = dot; d.style.boxShadow = `0 0 6px ${dot}`;
+                d.style.top = v.disc ? '9%' : '0'; d.style.right = v.disc ? '9%' : '0';
+                it.appendChild(d);
+            }
+            if (i === HERE && v.here && !v.dots && !v.index) { const h = el('i', 'here'); h.style.bottom = '-14%'; it.appendChild(h); }
+            it.dataset.i = i;
+            screen.appendChild(it);
+            return it;
+        });
+        const nameEl = v.name ? screen.appendChild(el('div', 'name')) : null;
+        const statusEl = v.status ? screen.appendChild(el('div', 'status')) : null;
+        const bar = v.bar ? screen.appendChild(el('div', 'bar')) : null;
+        let dots = [];
+        if (v.dots) {
+            const d = screen.appendChild(el('div', 'dots'));
+            dots = PANELS.map((_, i) => d.appendChild(el('i', i === HERE ? 'here' : '')));
+        }
+        let idx = [];
+        if (v.index) {
+            const row = screen.appendChild(el('div', 'idx'));
+            idx = PANELS.map(([pid], i) => { const s = row.appendChild(el('span', null, ICONS[pid])); s.dataset.i = i; if (i === HERE) s.style.boxShadow = 'inset 0 0 0 1.5px rgba(255,255,255,.4)'; return s; });
+        }
+        screen.appendChild(el('div', 'handle'));
+
+        const layout = () => {
+            const s = S();
+            const sp = v.sp * s;
+            const size = v.size * s;
+            const near = clamp(Math.round(st.pos), 0, n - 1);
+            items.forEach((it, i) => {
+                const d = i - st.pos;
+                const ad = Math.abs(d);
+                const x = Math.sign(d) * sp * (ad - 0.05 * Math.min(ad, 2) ** 2);
+                const k = Math.max(v.minS, 1 - v.fall * ad);
+                it.style.width = it.style.height = `${size}px`;
+                it.style.margin = `${-size / 2}px 0 0 ${-size / 2}px`;
+                it.style.top = `${v.y * 100}%`;
+                it.style.transform = `translateX(${x}px) scale(${k})`;
+                it.style.opacity = String(clamp(1.15 - v.fade * ad, 0, 1));
+                it.style.zIndex = String(10 - Math.round(ad));
+                it.classList.toggle('sel', i === near);
+            });
+            if (nameEl) {
+                nameEl.style.top = `${v.name.y * 100}%`; nameEl.style.fontSize = `${v.name.f * s}px`;
+                nameEl.style.transform = 'translateY(-50%)';
+                nameEl.textContent = PANELS[near][1];
+            }
+            if (statusEl) {
+                statusEl.style.top = `${v.status.y * 100}%`; statusEl.style.fontSize = `${v.status.f * s}px`;
+                statusEl.style.transform = 'translateY(-50%)';
+                statusEl.textContent = PANELS[near][2];
+            }
+            if (bar) {
+                const w = size * 0.42;
+                bar.style.width = `${w}px`; bar.style.marginLeft = `${-w / 2}px`;
+                bar.style.top = `${(v.y * s) + size * 0.5}px`;
+            }
+            dots.forEach((d, i) => d.classList.toggle('sel', i === near));
+            if (dots.length) dots[0].parentNode.style.top = `${v.dots * 100}%`;
+            idx.forEach((d, i) => d.classList.toggle('sel', i === near));
+            if (idx.length) idx[0].parentNode.style.top = `${v.index * 100}%`;
+        };
+
+        const animate = () => {
+            if (st.raf) return;
+            st.last = performance.now();
+            const step = (t) => {
+                st.raf = 0;
+                if (st.drag) return;
+                const dt = Math.min(64, t - st.last);
+                st.last = t;
+                const dp = st.target - st.pos;
+                if (Math.abs(dp) < 0.003) { st.pos = st.target; layout(); return; }
+                st.pos += dp * (1 - Math.exp(-dt / 55));
+                layout();
+                st.raf = requestAnimationFrame(step);
+            };
+            st.raf = requestAnimationFrame(step);
+        };
+        const go = (i) => { st.target = clamp(i, 0, n - 1); animate(); };
+
+        screen.addEventListener('pointerdown', (e) => {
+            device.focus();
+            if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; }
+            st.drag = { x0: e.clientX, p0: st.pos, samples: [], moved: false };
+            screen.setPointerCapture(e.pointerId);
+        });
+        screen.addEventListener('pointermove', (e) => {
+            const d = st.drag;
+            if (!d) return;
+            d.samples.push({ t: performance.now(), x: e.clientX });
+            if (d.samples.length > 6) d.samples.shift();
+            if (Math.abs(e.clientX - d.x0) > 8) d.moved = true;
+            if (!d.moved) return;
+            let p = d.p0 + (d.x0 - e.clientX) / (v.sp * S());
+            if (p < 0) p /= 3;
+            if (p > n - 1) p = n - 1 + (p - (n - 1)) / 3;
+            st.pos = p;
+            layout();
+        });
+        const end = (e) => {
+            const d = st.drag;
+            if (!d) return;
+            st.drag = null;
+            if (!d.moved) {
+                const hit = document.elementFromPoint(e.clientX, e.clientY);
+                const t = hit && hit.closest && hit.closest('[data-i]');
+                if (t && screen.contains(t)) { go(Number(t.dataset.i)); return; }
+                animate();
+                return;
+            }
+            const a = d.samples[0];
+            const b = d.samples[d.samples.length - 1];
+            const vel = a && b && b.t > a.t ? (a.x - b.x) / (b.t - a.t) / (v.sp * S()) : 0;
+            go(Math.round(st.pos + vel * 220));
+        };
+        screen.addEventListener('pointerup', end);
+        screen.addEventListener('pointercancel', end);
+        device.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); go(Math.round(st.target) + 1); }
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); go(Math.round(st.target) - 1); }
+        });
+        device.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            st.wheel = (st.wheel || 0) + (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY);
+            while (Math.abs(st.wheel) >= 50) { const dir = Math.sign(st.wheel); st.wheel -= dir * 50; go(Math.round(st.target) + dir); }
+        }, { passive: false });
+
+        requestAnimationFrame(layout);
+        return card;
+    };
+
+    const grid = document.getElementById('grid');
+    VARIANTS.forEach((v) => grid.appendChild(makeDevice(v)));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customize Home</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --ink-faint: #4a505c; --accent: #4f8cff; --ok: #3fcf7f;
+        --size: 340px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1180px; }
+    .lead { color: var(--page-muted); margin: 0 auto 24px; max-width: 1180px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 20px; max-width: 1180px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .card h2 { font-size: 15px; margin: 0 0 2px; align-self: flex-start; }
+    .card .tag { margin: 0 0 14px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .card ul { margin: 14px 0 0; padding-left: 18px; font-size: 13px; color: var(--page-muted); align-self: stretch; }
+    .card li { margin: 3px 0; }
+    .card li b { color: var(--page-text); font-weight: 600; }
+    .hint { margin-top: 10px; font-size: 12px; color: var(--page-muted); text-align: center; min-height: 18px; }
+    .btns { display: flex; gap: 6px; margin-top: 8px; }
+    .btns button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--page-muted); cursor: pointer; }
+
+    .device {
+        width: calc(var(--size) + 28px); height: calc(var(--size) + 28px); border-radius: 50%;
+        background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f;
+        display: grid; place-items: center; outline: none;
+    }
+    .device:focus-visible { box-shadow: 0 10px 30px rgba(0, 0, 0, .3), 0 0 0 3px var(--accent); }
+    .screen {
+        position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden;
+        background: var(--screen); color: var(--ink); box-shadow: inset 0 0 0 3px #000;
+        user-select: none; touch-action: none; cursor: grab;
+    }
+    .layer { position: absolute; inset: 0; border-radius: 50%; }
+
+    /* ---------- Home ---------- */
+    .home { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; transition: transform .25s ease-out; }
+    .home .bg { position: absolute; inset: 0; }
+    .home .content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .nav { position: absolute; top: 10.5%; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 7px; }
+    .nav i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, .3); }
+    .nav span { padding: 2px 9px; border-radius: 999px; font-size: 9px; font-weight: 700; letter-spacing: .08em; color: #fff; background: rgba(79, 140, 255, .16); box-shadow: inset 0 0 0 1px rgba(79, 140, 255, .6); }
+    .clock { font-size: calc(var(--size) * .22); font-weight: 300; letter-spacing: -.02em; line-height: 1; }
+    .clock.sm { font-size: calc(var(--size) * .13); }
+    .date { margin-top: 4px; font-size: calc(var(--size) * .045); color: var(--ink-dim); }
+    .el { position: relative; border-radius: 12px; transition: opacity .2s; }
+    .wxline { margin-top: 3px; font-size: calc(var(--size) * .042); color: var(--ink-dim); padding: 1px 6px; }
+    .wxline b { color: var(--ink); font-weight: 600; }
+    .stats { display: flex; gap: calc(var(--size) * .03); margin-top: calc(var(--size) * .035); }
+    .stat { padding: 2px 6px; min-width: calc(var(--size) * .16); }
+    .stat .v { font-size: calc(var(--size) * .07); font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .stat .l { font-size: calc(var(--size) * .027); color: var(--ink-dim); text-transform: uppercase; letter-spacing: .1em; }
+    .stat.run .v { color: #f5b942; }
+    .face-sky .stat .l, .face-sky .date, .face-sky .wxline { color: rgba(255, 255, 255, .82); }
+    .face-sky .stat .v { text-shadow: 0 2px 8px rgba(0, 0, 0, .3); }
+    .hero { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding: 2px 8px; }
+    .hero .t { font-size: calc(var(--size) * .14); font-weight: 600; line-height: 1; background: linear-gradient(180deg, #ffd36b, #ff7a45); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero .s { text-align: left; font-size: calc(var(--size) * .033); color: var(--ink-dim); }
+    .hero .s b { display: block; color: var(--ink); font-size: calc(var(--size) * .04); }
+    .orb { position: absolute; width: calc(var(--size) * .075); height: calc(var(--size) * .075); border-radius: 50%; transform: translate(-50%, -50%);
+        background: radial-gradient(circle, #fff6c8, #ffc34d 60%, #ff9a3c); box-shadow: 0 0 18px 6px rgba(255, 195, 77, .45); }
+
+    /* edit-in-place (B) */
+    .home.edit { transform: scale(.84); }
+    .home.edit .el { outline: 1.5px dashed rgba(255, 255, 255, .28); outline-offset: 2px; cursor: pointer; }
+    .home.edit .el.off { opacity: .28; }
+    .home.edit .el.sel { outline: 2px solid var(--accent); box-shadow: 0 0 14px rgba(79, 140, 255, .4); }
+    .badge { position: absolute; top: -9px; right: -9px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; line-height: 1; }
+    .badge.minus { background: #3a3f48; color: #fff; }
+    .badge.plus { background: var(--accent); color: #fff; }
+    .editbar { position: absolute; left: 0; right: 0; bottom: 7%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .facesel { display: flex; align-items: center; gap: 8px; font-size: calc(var(--size) * .04); font-weight: 600; padding: 3px 4px; border-radius: 999px; }
+    .facesel.sel { box-shadow: inset 0 0 0 2px var(--accent), 0 0 12px rgba(79, 140, 255, .35); }
+    .facesel .arr { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-dim); cursor: pointer; }
+    .edittop { position: absolute; top: 5.5%; left: 0; right: 0; text-align: center; font-size: calc(var(--size) * .028); letter-spacing: .14em; color: var(--ink-dim); font-weight: 600; }
+    .fdots { display: flex; gap: 4px; }
+    .fdots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, .2); }
+    .fdots i.on { background: var(--ink); }
+
+    /* the sheet (A) */
+    .sheet { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 50% 70%, #1a2030, #0d1016 75%); transform: translateY(100%);
+        box-shadow: 0 -8px 26px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .1); }
+    .sheet .grab { position: absolute; top: 4%; left: 50%; width: 12%; height: 4px; margin-left: -6%; border-radius: 3px; background: rgba(255, 255, 255, .25); }
+    .sheet .ttl { position: absolute; top: 8.5%; left: 0; right: 0; text-align: center; font-size: calc(var(--size) * .028); letter-spacing: .14em; color: var(--ink-dim); font-weight: 600; }
+    .carousel { position: absolute; left: 0; right: 0; top: 10%; height: 0; }
+    .pv { position: absolute; left: 50%; top: 0; width: var(--size); height: var(--size); margin-left: calc(var(--size) / -2); transform-origin: 50% 0; border-radius: 50%; cursor: pointer; }
+    .pv .home { box-shadow: 0 0 0 4px rgba(255, 255, 255, .1); }
+    .pv.sel .home { box-shadow: 0 0 0 6px var(--accent), 0 0 30px rgba(79, 140, 255, .5); }
+    .fdots2 { position: absolute; top: 63%; left: 0; right: 0; display: flex; justify-content: center; gap: 5px; }
+    .fdots2 i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, .2); }
+    .fdots2 i.on { background: var(--ink); }
+    .toggles { position: absolute; top: 67.5%; left: 0; right: 0; display: flex; justify-content: center; gap: calc(var(--size) * .03); }
+    .tg { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+    .tg .b { width: calc(var(--size) * .12); height: calc(var(--size) * .12); border-radius: 50%; display: grid; place-items: center; color: var(--ink-dim); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); transition: background .15s, color .15s; }
+    .tg .b svg { width: 52%; height: 52%; }
+    .tg.on .b { background: rgba(79, 140, 255, .22); color: #fff; box-shadow: inset 0 0 0 1px rgba(79, 140, 255, .55); }
+    .tg .n { font-size: calc(var(--size) * .026); color: var(--ink-dim); letter-spacing: .02em; }
+    .tg.on .n { color: var(--ink); }
+    .tg.sel .b { box-shadow: inset 0 0 0 2px var(--accent), 0 0 12px rgba(79, 140, 255, .45); }
+    .ln { fill: none; stroke: currentColor; stroke-width: .5; stroke-linecap: round; stroke-linejoin: round; }
+    .toast { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, .14); backdrop-filter: blur(6px); font-size: calc(var(--size) * .04); white-space: nowrap; pointer-events: none; }
+</style>
+</head>
+<body>
+    <h1>Customize Home</h1>
+    <p class="lead">Swipe up from the bottom edge of Home (drag with the mouse, or press U). Choose which elements show (Weather, Habits, Countdown, Timers &amp; focus; the clock and date always stay) and the face. Knob: scroll wheel or ↑ ↓ to turn, Enter to press, hold Enter or Escape to close. The faces are simplified versions of the earlier Home mock-ups. Option B (edit in place) was dropped.</p>
+    <div class="grid" id="grid"></div>
+
+<script>
+(() => {
+    'use strict';
+    const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+    const ICON = {
+        weather: '<svg viewBox="-3 -3 6 6"><circle class="ln" cx="-0.6" cy="-0.6" r="1.1"/><path class="ln" d="M -0.6 -2.5 V -2.1 M -2.5 -0.6 H -2.1 M -1.95 -1.95 L -1.7 -1.7 M 0.75 -1.95 L 0.5 -1.7 M -1.5 2 H 1.5 A 1.1 1.1 0 0 0 1.4 -0.1 A 1.5 1.5 0 0 0 -1.3 0.4 A 0.8 0.8 0 0 0 -1.5 2 Z"/></svg>',
+        habits: '<svg viewBox="-3 -3 6 6"><rect class="ln" x="-2" y="-2" width="4" height="4" rx=".9"/><path class="ln" d="M -0.9 0 L -0.2 0.8 L 1 -0.7"/></svg>',
+        countdown: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -1.4 2.2 V -2 H 1.7 L 0.9 -1 L 1.7 0 H -1.4"/></svg>',
+        timers: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -1.5 -2.1 H 1.5 M -1.5 2.1 H 1.5 M -1.1 -2.1 C -1.1 -0.6 1.1 0.6 1.1 2.1 M 1.1 -2.1 C 1.1 -0.6 -1.1 0.6 -1.1 2.1"/></svg>',
+    };
+    const ELEMS = [['weather', 'Weather'], ['habits', 'Habits'], ['countdown', 'Countdown'], ['timers', 'Timers']];
+    const FACES = [
+        { key: 'sun', name: 'Sun ring' },
+        { key: 'sky', name: 'Living sky' },
+        { key: 'plain', name: 'Plain' },
+    ];
+    const HOUR = 10.7;   // 10:42 AM
+    const ringAngle = (h) => (h / 24) * 360 + 180;   // noon at the top, midnight at the bottom
+    const SKYRING = 'conic-gradient(from 180deg, #1b1d4a 0deg, #2a2458 60deg, #e98a6a 92deg, #f2b77c 112deg, #5ea9ea 150deg, #5aa2e4 225deg, #f19a5c 270deg, #e1566e 290deg, #4a2a6e 308deg, #1b1d4a 360deg)';
+    const ringMask = (w) => `radial-gradient(circle closest-side, transparent calc(100% - ${w + 4}px), #000 calc(100% - ${w + 3}px), #000 calc(100% - 4px), transparent calc(100% - 3px))`;
+
+    // Home, from a settings object { face, show: { weather, habits, countdown, timers } }.
+    // edit: { sel } draws every element with an outline and hidden ones as ghosts (option B).
+    const renderHome = (st, edit) => {
+        const h = el('div', `home face-${st.face} ${edit ? 'edit' : ''}`);
+        const bg = el('div', 'bg');
+        const face = st.face;
+        if (face === 'sun' || face === 'day') {
+            const ring = el('div', 'layer');
+            ring.style.background = SKYRING;
+            const w = face === 'sun' ? 13 : 9;
+            ring.style.webkitMaskImage = ring.style.maskImage = ringMask(w);
+            if (face === 'day') {
+                // the part of the day still to come is dim
+                const dim = el('div', 'layer');
+                const a = ringAngle(HOUR);
+                dim.style.background = `conic-gradient(from 180deg, transparent 0deg ${a - 180}deg, rgba(11,13,17,.72) ${a - 180}deg 360deg)`;
+                dim.style.webkitMaskImage = dim.style.maskImage = ringMask(w);
+                bg.append(ring, dim);
+            } else {
+                bg.append(ring);
+            }
+            const a = (ringAngle(HOUR) - 90) * Math.PI / 180, r = 50 - 4.6;
+            if (face === 'sun') {
+                const glow = el('div', 'layer');
+                glow.style.background = `radial-gradient(circle at ${50 + Math.cos(a) * r}% ${50 + Math.sin(a) * r}%, rgba(94,169,234,.28), transparent 55%)`;
+                const orb = el('div', 'orb');
+                orb.style.left = `${50 + Math.cos(a) * r}%`; orb.style.top = `${50 + Math.sin(a) * r}%`;
+                bg.prepend(glow); bg.append(orb);
+            } else {
+                const dot = el('div', 'orb');
+                dot.style.background = '#fff'; dot.style.boxShadow = '0 0 0 2px #0b0d11';
+                dot.style.width = dot.style.height = 'calc(var(--size) * .035)';
+                const rr = 50 - 3.2;
+                dot.style.left = `${50 + Math.cos(a) * rr}%`; dot.style.top = `${50 + Math.sin(a) * rr}%`;
+                bg.append(dot);
+            }
+        } else if (face === 'sky') {
+            bg.style.background = 'linear-gradient(180deg, #2a6fd0, #5ea9ea 70%, #8cc2f0)';
+            const orb = el('div', 'orb');
+            orb.style.left = '30%'; orb.style.top = '24%';
+            orb.style.width = orb.style.height = 'calc(var(--size) * .1)';
+            bg.append(orb);
+        }
+        h.appendChild(bg);
+        const c = el('div', 'content');
+        if (face === 'sky') c.style.textShadow = '0 2px 10px rgba(0,0,0,.35)';
+        const hero = face === 'hero';
+        c.append(el('div', `clock ${hero ? 'sm' : ''}`, '10:42'), el('div', 'date', 'Monday, Nov 9'));
+        if (face === 'sky') c.lastChild.style.color = 'rgba(255,255,255,.85)';
+
+        const wrap = (key, node) => {
+            node.classList.add('el');
+            node.dataset.key = key;
+            const on = st.show[key];
+            if (!edit) return on ? node : null;
+            if (!on) node.classList.add('off');
+            if (edit.sel === key) node.classList.add('sel');
+            node.appendChild(el('span', `badge ${on ? 'minus' : 'plus'}`, on ? '−' : '+'));
+            return node;
+        };
+        const wx = hero
+            ? el('div', 'hero', '<span class="t">78°</span><span class="s"><b>Clear</b>H 84 · L 61</span>')
+            : el('div', 'wxline', '<b>78° Clear</b> · H 84 L 61');
+        if (face === 'sky' && !hero) wx.style.color = 'rgba(255,255,255,.85)';
+        const w = wrap('weather', wx);
+        if (w) c.appendChild(w);
+        const stats = el('div', 'stats');
+        const items = [
+            ['timers', '<div class="v">3:12</div><div class="l">Tea</div>', 'run'],
+            ['habits', '<div class="v">2/4</div><div class="l">Habits</div>', ''],
+            ['countdown', '<div class="v">12d</div><div class="l">Vacation</div>', ''],
+        ];
+        items.forEach(([k, html, cls]) => { const n = wrap(k, el('div', `stat ${cls}`, html)); if (n) stats.appendChild(n); });
+        if (stats.children.length) c.appendChild(stats);
+        h.appendChild(c);
+        if (!edit) h.appendChild(el('div', 'nav', '<i></i><i></i><span>HOME</span><i></i><i></i>'));
+        return h;
+    };
+
+    // ---------- the sheet ----------
+    // Layout, top to bottom: title, a carousel of face previews (the middle one is live with
+    // your elements; the neighbours peek in at the sides; swipe it or turn the knob to change
+    // the face, with the same glide as the fast travel tray), the face's name and dots, then
+    // the element toggles.
+    const PV = 0.5;           // middle preview scale
+    const SPACING = 0.4;      // fraction of the screen between previews
+    const TAU = 55, THROW = 200;
+
+    const makeCard = () => {
+        const card = el('section', 'card');
+        card.append(el('h2', null, 'A. Settings sheet with a face carousel'),
+            el('p', 'tag', 'Swipe up from the bottom of Home. The middle preview is Home as it will look, live, with your elements; swipe it sideways to try the other faces. Toggle elements below and watch the preview rearrange.'));
+        const device = el('div', 'device');
+        device.tabIndex = 0;
+        const screen = el('div', 'screen');
+        device.appendChild(screen);
+        const hint = el('div', 'hint');
+        const btns = el('div', 'btns');
+        const openBtn = el('button', null, 'Open (U)');
+        const resetBtn = el('button', null, 'Reset');
+        btns.append(openBtn, resetBtn);
+        const ul = el('ul');
+        [
+            '<b>Touch:</b> swipe the preview left or right to change the face; tap a toggle to show or hide that element. Tapping a side preview brings it to the middle; tapping the middle one closes the sheet.',
+            '<b>Knob:</b> turning walks one line: the faces, then the toggles. Press on a face picks it and closes; press on a toggle flips it.',
+            '<b>Close:</b> tap the middle preview, press the knob on a face, swipe down, hold, or press Escape here. Changes save as you make them.',
+        ].forEach((b) => ul.appendChild(el('li', null, b)));
+        card.append(device, hint, btns, ul);
+
+        const fresh = () => ({ face: 'sun', show: { weather: true, habits: true, countdown: true, timers: true } });
+        const ctx = { st: fresh(), open: false, reveal: 0, zone: 'face', tsel: 0, pos: 0, target: 0, raf: 0 };
+        let homeEl = null, sheet = null, items = [], dotsEl = null, carousel = null;
+        const S = () => screen.clientWidth || 340;
+
+        const toggles = () => {
+            const tg = el('div', 'toggles');
+            ELEMS.forEach(([k, name], i) => {
+                const t = el('div', `tg ${ctx.st.show[k] ? 'on' : ''} ${ctx.zone === 'toggles' && ctx.tsel === i ? 'sel' : ''}`);
+                t.dataset.toggle = k;
+                t.append(el('div', 'b', ICON[k]), el('div', 'n', name));
+                tg.appendChild(t);
+            });
+            return tg;
+        };
+        const buildSheet = () => {
+            sheet = el('div', 'sheet');
+            sheet.append(el('div', 'grab'));
+            carousel = el('div', 'carousel');
+            items = FACES.map((f, i) => {
+                const it = el('div', 'pv');
+                it.dataset.face = i;
+                it.appendChild(renderHome({ face: f.key, show: ctx.st.show }));
+                carousel.appendChild(it);
+                return it;
+            });
+            dotsEl = el('div', 'fdots2');
+            FACES.forEach(() => dotsEl.appendChild(el('i')));
+            sheet.append(carousel, dotsEl, toggles());
+            screen.appendChild(sheet);
+            layout();
+            place();
+        };
+        // Rebuild only what changed: the previews (elements toggled) and the toggles row.
+        const refresh = () => {
+            if (!sheet) return;
+            items.forEach((it, i) => it.replaceChildren(renderHome({ face: FACES[i].key, show: ctx.st.show })));
+            sheet.querySelector('.toggles').replaceWith(toggles());
+            layout();
+            homeEl.replaceWith(homeEl = renderHome(ctx.st));
+        };
+        const layout = () => {
+            const W = S(), sp = W * SPACING;
+            const near = Math.max(0, Math.min(FACES.length - 1, Math.round(ctx.pos)));
+            items.forEach((it, i) => {
+                const d = i - ctx.pos, ad = Math.abs(d);
+                const k = PV * Math.max(0.5, 1 - 0.42 * ad);
+                it.style.transform = `translateX(${d * sp}px) scale(${k})`;
+                it.style.opacity = String(Math.max(0, 1 - 0.45 * ad));
+                it.style.zIndex = String(10 - Math.round(ad));
+                it.classList.toggle('mid', i === near);
+                it.classList.toggle('sel', i === near && ctx.zone === 'face');
+            });
+            [...dotsEl.children].forEach((dd, i) => dd.classList.toggle('on', i === near));
+        };
+        const glide = () => {
+            if (ctx.raf) return;
+            let last = performance.now();
+            const step = (t) => {
+                ctx.raf = 0;
+                if (ctx.drag) return;
+                const dt = Math.min(64, t - last); last = t;
+                const dp = ctx.target - ctx.pos;
+                if (Math.abs(dp) < 0.003) ctx.pos = ctx.target; else ctx.pos += dp * (1 - Math.exp(-dt / TAU));
+                if (sheet) layout();
+                if (ctx.pos !== ctx.target) ctx.raf = requestAnimationFrame(step);
+            };
+            ctx.raf = requestAnimationFrame(step);
+        };
+        const setFace = (i) => {
+            ctx.target = Math.max(0, Math.min(FACES.length - 1, i));
+            ctx.st.face = FACES[ctx.target].key;
+            homeEl.replaceWith(homeEl = renderHome(ctx.st));
+            glide();
+        };
+
+        const draw = () => {
+            screen.replaceChildren();
+            homeEl = renderHome(ctx.st);
+            screen.appendChild(homeEl);
+            sheet = null;
+            if (ctx.open || ctx.reveal > 0) buildSheet();
+            hint.textContent = ctx.open ? '' : 'On Home: swipe up from the bottom edge';
+        };
+        const place = () => { if (sheet) sheet.style.transform = `translateY(${(1 - Math.max(0, Math.min(1, ctx.reveal))) * 100}%)`; };
+        const animate = (to, then) => {
+            const from = ctx.reveal, t0 = performance.now();
+            const step = (t) => {
+                const k = Math.min(1, (t - t0) / 220);
+                ctx.reveal = from + (to - from) * (1 - (1 - k) ** 3);
+                place();
+                if (k < 1) requestAnimationFrame(step); else { ctx.reveal = to; if (then) then(); }
+            };
+            requestAnimationFrame(step);
+        };
+        const open = () => {
+            ctx.open = true; ctx.zone = 'face'; ctx.tsel = 0;
+            ctx.pos = ctx.target = FACES.findIndex((f) => f.key === ctx.st.face);
+            if (!sheet) { ctx.reveal = 0.001; draw(); }
+            animate(1);
+        };
+        const close = () => { ctx.open = false; animate(0, draw); };
+
+        // Pointer: swipe up from the bottom edge (Home only) opens; open: swipe down closes,
+        // sideways drags the face carousel (glide + flick), taps hit toggles or side previews.
+        let p = null;
+        screen.addEventListener('pointerdown', (e) => {
+            device.focus();
+            const r = screen.getBoundingClientRect();
+            p = { x: e.clientX, y: e.clientY, fromBottom: !ctx.open && e.clientY - r.top > r.height * 0.84, axis: null, H: r.height, samples: [] };
+            if (ctx.raf) { cancelAnimationFrame(ctx.raf); ctx.raf = 0; }
+            screen.setPointerCapture(e.pointerId);
+        });
+        screen.addEventListener('pointermove', (e) => {
+            if (!p) return;
+            const dx = e.clientX - p.x, dy = e.clientY - p.y;
+            if (!p.axis && Math.hypot(dx, dy) > 10) {
+                p.axis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
+                if (p.axis === 'y' && p.fromBottom && dy < 0 && !sheet) { ctx.pos = ctx.target = FACES.findIndex((f) => f.key === ctx.st.face); ctx.reveal = 0.001; draw(); }
+                if (p.axis === 'x' && ctx.open) { ctx.drag = { p0: ctx.pos }; ctx.zone = 'face'; refresh(); }
+            }
+            if (p.axis === 'y' && p.fromBottom && !ctx.open) { ctx.reveal = Math.max(0, Math.min(1, -dy / (p.H * 0.45))); place(); }
+            if (p.axis === 'y' && ctx.open && dy > 0) { ctx.reveal = Math.max(0, 1 - dy / (p.H * 0.45)); place(); }
+            if (p.axis === 'x' && ctx.drag) {
+                p.samples.push({ t: performance.now(), x: e.clientX });
+                if (p.samples.length > 6) p.samples.shift();
+                const n = FACES.length;
+                let q = ctx.drag.p0 - dx / (S() * SPACING);
+                if (q < 0) q /= 3;
+                if (q > n - 1) q = n - 1 + (q - (n - 1)) / 3;
+                ctx.pos = q;
+                layout();
+            }
+        });
+        screen.addEventListener('pointerup', (e) => {
+            const q = p; p = null;
+            if (!q) return;
+            const dy = e.clientY - q.y;
+            if (q.axis === 'y' && q.fromBottom && !ctx.open) { if (ctx.reveal > 0.3) open(); else { ctx.reveal = 0; draw(); } return; }
+            if (q.axis === 'y' && ctx.open) { if (ctx.reveal < 0.7) close(); else animate(1); return; }
+            if (q.axis === 'x' && ctx.drag) {
+                ctx.drag = null;
+                const a = q.samples[0], b = q.samples[q.samples.length - 1];
+                const v = a && b && b.t > a.t ? (a.x - b.x) / (b.t - a.t) / (S() * SPACING) : 0;
+                setFace(Math.round(ctx.pos + v * THROW));
+                return;
+            }
+            if (!ctx.open || q.axis) return;
+            const hit = document.elementFromPoint(e.clientX, e.clientY);
+            const t = hit && hit.closest('[data-toggle], [data-face]');
+            if (!t || !screen.contains(t)) return;
+            if (t.dataset.face != null) {
+                const i = Number(t.dataset.face);
+                // Tapping the face that's already in the middle means "this one": close.
+                if (i === Math.round(ctx.target) && Math.abs(ctx.pos - ctx.target) < 0.05) { close(); return; }
+                ctx.zone = 'face'; setFace(i); refresh(); return;
+            }
+            const k = t.dataset.toggle;
+            ctx.zone = 'toggles'; ctx.tsel = ELEMS.findIndex(([x]) => x === k);
+            ctx.st.show[k] = !ctx.st.show[k];
+            refresh();
+        });
+
+        // Knob: turn changes the face; press moves to the toggles (turn steps, press flips,
+        // turning back past the first one returns to the faces). Hold closes.
+        const rotate = (dir) => {
+            if (ctx.zone === 'face') {
+                if (dir > 0 && Math.round(ctx.target) === FACES.length - 1) { ctx.zone = 'toggles'; ctx.tsel = 0; refresh(); return; }
+                setFace(Math.round(ctx.target) + dir);
+                return;
+            }
+            if (dir < 0 && ctx.tsel === 0) { ctx.zone = 'face'; refresh(); return; }
+            ctx.tsel = Math.max(0, Math.min(ELEMS.length - 1, ctx.tsel + dir));
+            refresh();
+        };
+        const press = () => {
+            if (ctx.zone === 'face') { close(); return; }   // picks this face
+            const k = ELEMS[ctx.tsel][0];
+            ctx.st.show[k] = !ctx.st.show[k];
+            refresh();
+        };
+        let wheelAcc = 0, holdT = null, held = false;
+        device.addEventListener('wheel', (e) => {
+            if (!ctx.open) return;
+            e.preventDefault();
+            wheelAcc += e.deltaY;
+            while (Math.abs(wheelAcc) >= 50) { const d = Math.sign(wheelAcc); wheelAcc -= d * 50; rotate(d); }
+        }, { passive: false });
+        device.addEventListener('keydown', (e) => {
+            if (e.key === 'u' || e.key === 'U') { if (!ctx.open) open(); return; }
+            if (e.key === 'Escape' && ctx.open) { close(); return; }
+            if (!ctx.open) return;
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); rotate(1); }
+            if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); rotate(-1); }
+            if (e.key === 'Enter' && !e.repeat) { held = false; holdT = setTimeout(() => { held = true; close(); }, 700); }
+        });
+        device.addEventListener('keyup', (e) => {
+            if (e.key !== 'Enter' || !ctx.open) return;
+            clearTimeout(holdT);
+            if (!held) press();
+        });
+        openBtn.onclick = () => { device.focus(); if (!ctx.open) open(); };
+        resetBtn.onclick = () => { ctx.st = fresh(); ctx.open = false; ctx.reveal = 0; draw(); };
+        draw();
+        return card;
+    };
+
+    document.getElementById('grid').append(makeCard());
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home ideas</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --ink-faint: #4a505c;
+        --accent: #4f8cff; --today: #f5b942; --ok: #3fcf7f; --pink: #ff6fae; --violet: #a77bff;
+        --size: 340px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1180px; }
+    .lead { color: var(--page-muted); margin: 0 auto 14px; max-width: 1180px; }
+    .scrub { max-width: 1180px; margin: 0 auto 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; font-size: 13px; }
+    .scrub input[type=range] { width: 260px; max-width: 100%; }
+    .scrub output { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 70px; }
+    .scrub button { font: inherit; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--page-text); cursor: pointer; }
+    .scrub label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+    .slot { display: contents; }
+    .slot > * { position: relative; z-index: 2; }
+    .controls { position: sticky; top: 0; z-index: 10; background: var(--page); margin: 0 -16px 22px; padding: 10px 16px; box-shadow: 0 1px 0 var(--border), 0 6px 12px -8px rgba(0, 0, 0, .25); }
+    .controls .scrub { margin-bottom: 0; }
+    .controls .scrub + .scrub { margin-top: 8px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr)); gap: 20px; max-width: 1180px; margin: 0 auto; }
+    @media (max-width: 420px) { :root { --size: calc(100vw - 92px); } .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .card h2 { font-size: 15px; margin: 14px 0 4px; align-self: flex-start; }
+    .card p { margin: 0 0 6px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .card ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; color: var(--page-muted); align-self: flex-start; }
+    .card li b { color: var(--page-text); font-weight: 600; }
+
+    .device {
+        width: calc(var(--size) + 28px); height: calc(var(--size) + 28px); border-radius: 50%;
+        background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f;
+        display: grid; place-items: center;
+    }
+    .screen {
+        position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden;
+        background: radial-gradient(circle at 50% 35%, #161a22, var(--screen) 70%); color: var(--ink);
+        box-shadow: inset 0 0 0 3px #000;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        transition: background .4s;
+    }
+    .screen > * { position: relative; z-index: 2; }
+    .screen > .layer { position: absolute; inset: 0; z-index: 0; }
+    .nav { position: absolute !important; top: 10.5%; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 3; }
+    .nav .pill { padding: 2px 9px; border-radius: 999px; font-size: 9px; font-weight: 700; letter-spacing: .08em; color: #fff; background: rgba(79, 140, 255, .16); box-shadow: inset 0 0 0 1px rgba(79, 140, 255, .6); }
+    .nav i { width: 9px; height: 9px; border-radius: 3px; border: 1.2px solid rgba(242, 244, 248, .4); }
+    .nav i:first-child, .nav i:last-child { opacity: .35; }
+    .clock { font-size: calc(var(--size) * .2); font-weight: 300; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .clock.sm { font-size: calc(var(--size) * .16); }
+    .date { margin-top: 5px; font-size: calc(var(--size) * .036); color: var(--ink-dim); }
+    .weather { margin-top: 3px; font-size: calc(var(--size) * .032); color: var(--ink-dim); }
+    .weather b { color: var(--ink); font-weight: 600; }
+    .stats { display: flex; gap: calc(var(--size) * .045); margin-top: calc(var(--size) * .045); }
+    .stat .v { font-size: calc(var(--size) * .075); font-weight: 600; line-height: 1.05; font-variant-numeric: tabular-nums; }
+    .stat .l { font-size: calc(var(--size) * .027); color: var(--ink-dim); text-transform: uppercase; letter-spacing: .1em; }
+
+    /* A: sky */
+    .sky .date, .sky .weather { color: rgba(255, 255, 255, .82); }
+    .sky .clock { text-shadow: 0 2px 14px rgba(0, 0, 0, .25); }
+    .sky .stat .l { color: rgba(255, 255, 255, .75); }
+    .sky .stat .v { text-shadow: 0 1px 8px rgba(0, 0, 0, .25); }
+    .orb { position: absolute; z-index: 1; width: calc(var(--size) * .085); height: calc(var(--size) * .085); border-radius: 50%; transform: translate(-50%, -50%); transition: left .4s, top .4s; }
+    .orb.sun { background: radial-gradient(circle, #fff7d6, #ffd36b 55%, #ffb03a); box-shadow: 0 0 30px 8px rgba(255, 200, 90, .55); }
+    .orb.moon { background: radial-gradient(circle at 38% 38%, #f4f1e6, #cfcab8); box-shadow: 0 0 22px 4px rgba(220, 220, 255, .25); }
+    .orb.crescent { background: transparent; box-shadow: inset calc(var(--size) * -.018) calc(var(--size) * .006) 0 0 #f1edd8; filter: drop-shadow(0 0 6px rgba(220, 220, 255, .45)); transform: translate(-50%, -50%) rotate(-20deg); }
+    .star { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; z-index: 1; animation: tw 3s ease-in-out infinite; }
+    @keyframes tw { 50% { opacity: .25; } }
+
+    /* C: rings */
+    .legend { display: flex; gap: calc(var(--size) * .04); margin-top: calc(var(--size) * .045); }
+    .legend .it { display: flex; flex-direction: column; align-items: center; }
+    .legend .v { font-size: calc(var(--size) * .062); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .legend .l { font-size: calc(var(--size) * .026); color: var(--ink-dim); text-transform: uppercase; letter-spacing: .1em; }
+
+    /* D: chips */
+    .chips { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--size) * .022); margin-top: calc(var(--size) * .04); width: 70%; }
+    .chip { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 14px; text-align: left; background: color-mix(in srgb, var(--h) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--h) 55%, transparent); }
+    .chip.sel { box-shadow: inset 0 0 0 2px var(--h), 0 0 16px color-mix(in srgb, var(--h) 55%, transparent); }
+    .chip .ic { width: 20px; height: 20px; flex: none; border-radius: 50%; background: var(--h); display: grid; place-items: center; color: #0b0d11; font-size: 11px; font-weight: 800; }
+    .chip .v { font-size: calc(var(--size) * .046); font-weight: 650; color: var(--h); line-height: 1.05; font-variant-numeric: tabular-nums; }
+    .chip .l { font-size: calc(var(--size) * .025); color: var(--ink-dim); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+    .wx-chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 3px 10px; border-radius: 999px; font-size: calc(var(--size) * .032); background: linear-gradient(90deg, rgba(255, 176, 58, .25), rgba(255, 111, 174, .18)); color: #ffd9a0; }
+
+    /* E: buddy */
+    .buddy { width: calc(var(--size) * .3); height: calc(var(--size) * .24); margin-top: calc(var(--size) * .06); }
+    .buddy .eye { transform-box: fill-box; transform-origin: center; animation: blink 5s infinite; }
+    @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+    .bubble { margin-top: calc(var(--size) * .03); padding: 6px 14px; border-radius: 14px; max-width: 70%; font-size: calc(var(--size) * .036); background: rgba(255, 255, 255, .07); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); transition: opacity .35s; }
+    .bubble b { font-weight: 650; }
+    .zz { position: absolute; font-weight: 700; color: #a9b4ff; animation: zz 2.4s ease-in-out infinite; }
+    @keyframes zz { 0% { opacity: 0; transform: translate(0, 0); } 40% { opacity: 1; } 100% { opacity: 0; transform: translate(8px, -14px); } }
+
+    /* F: liquid */
+    .liquid svg { width: 100%; height: 100%; display: block; }
+    .wave1 { animation: wv 6s linear infinite; }
+    .wave2 { animation: wv 9s linear infinite reverse; }
+    @keyframes wv { to { transform: translateX(-100px); } }
+    .liquid-scr .stat .v, .liquid-scr .clock { text-shadow: 0 2px 10px rgba(0, 0, 0, .35); }
+    .liquid-scr .stat .l, .liquid-scr .date, .liquid-scr .weather { color: rgba(255, 255, 255, .78); }
+    /* G: weather hero */
+    .wx-hero { display: flex; align-items: center; gap: calc(var(--size) * .03); margin-top: calc(var(--size) * .035); }
+    .wx-icon { width: calc(var(--size) * .17); height: calc(var(--size) * .17); }
+    .wx-icon .rays { transform-origin: 30px 30px; animation: spin 24s linear infinite; }
+    .wx-icon .cloud { animation: drift 6s ease-in-out infinite alternate; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes drift { to { transform: translateX(4px); } }
+    .wx-temp { font-size: calc(var(--size) * .13); font-weight: 600; line-height: 1; background: linear-gradient(180deg, #ffd36b, #ff7a45); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .wx-side { text-align: left; font-size: calc(var(--size) * .032); color: var(--ink-dim); }
+    .wx-side b { color: var(--ink); font-weight: 600; display: block; font-size: calc(var(--size) * .038); }
+    .range { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .range .bar { position: relative; width: calc(var(--size) * .16); height: 5px; border-radius: 3px; background: linear-gradient(90deg, #4fc3f7, #f5d142, #ff7a45); }
+    .range .bar i { position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #0b0d11; }
+    .mini-stats { display: flex; gap: calc(var(--size) * .05); margin-top: calc(var(--size) * .04); font-size: calc(var(--size) * .034); font-variant-numeric: tabular-nums; }
+    .mini-stats span { color: var(--ink-dim); }
+    .mini-stats b { color: var(--ink); font-weight: 650; margin-right: 4px; }
+
+    /* H: forecast arc */
+    .fc-lbl { font-size: 3.1px; font-weight: 600; fill: rgba(242, 244, 248, .85); }
+    .fc-sub { font-size: 2.6px; fill: rgba(139, 147, 163, .9); }
+</style>
+</head>
+<body>
+<h1>Home screen ideas</h1>
+<p class="lead">Ten directions for a livelier, more colorful Home. Each keeps the clock and the press-to-jump glance stats; they differ in what fills the rest of the circle. Several combine well (B's ring around D's chips, or E's buddy on A's sky).</p>
+<div class="controls">
+<div class="scrub">
+    <label for="hr">Preview time of day</label>
+    <input id="hr" type="range" min="0" max="23.99" step="0.05">
+    <output id="hrOut"></output>
+    <button id="nowBtn" type="button">Now</button>
+    <span style="color:var(--page-muted)">Affects A, B, E, F, H, I and J.</span>
+</div>
+<div class="scrub" id="toggles">
+    <span>Running on the device</span>
+    <label><input type="checkbox" data-k="focus"> Focus session</label>
+    <label><input type="checkbox" data-k="timer" checked> Timer</label>
+    <label><input type="checkbox" data-k="habits" checked> Habits</label>
+    <label><input type="checkbox" data-k="countdown" checked> Countdown</label>
+    <span style="color:var(--page-muted)">Home shows the first three that apply, in this order, like the real device.</span>
+</div>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+(() => {
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    const mk = (tag, attrs = {}, text) => { const n = document.createElementNS(SVGNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; return n; };
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const mix = (a, b, t) => { const A = hex(a), B = hex(b); return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(',')})`; };
+
+    // sky colours through the day: [hour, top, bottom]
+    const SKY = [
+        [0, '#0a0f2c', '#1b1d4a'], [4.5, '#0f1538', '#2a2458'], [6, '#3b4a8f', '#e98a6a'], [7.5, '#3f7fd6', '#f2b77c'],
+        [10, '#2a6fd0', '#5ea9ea'], [15, '#2766c4', '#5aa2e4'], [18, '#4a5bb0', '#f19a5c'], [19.3, '#3b2a74', '#e1566e'],
+        [20.5, '#191a4c', '#4a2a6e'], [24, '#0a0f2c', '#1b1d4a'],
+    ];
+    const sky = (h) => {
+        let i = 0; while (SKY[i + 1][0] <= h) i++;
+        const [h0, t0, b0] = SKY[i], [h1, t1, b1] = SKY[i + 1], t = (h - h0) / (h1 - h0);
+        return { top: mix(t0, t1, t), bottom: mix(b0, b1, t), bottomHex: t < .5 ? b0 : b1 };
+    };
+    const SUNRISE = 6.2, SUNSET = 19.4;
+    const isNight = (h) => h < SUNRISE - .3 || h > SUNSET + .4;
+
+    let H = 0;
+    const fmt = (h) => { const hh = Math.floor(h) % 24, mm = Math.floor((h % 1) * 60); return `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')}`; };
+    const ampm = (h) => (h < 12 ? 'AM' : 'PM');
+    const DATE = new Date().toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+
+    const nav = () => { const n = el('div', 'nav'); n.append(el('i'), el('i'), el('span', 'pill', 'HOME'), el('i'), el('i')); return n; };
+    const screen = (extra = '') => { const s = el('div', `screen ${extra}`); s.appendChild(nav()); return s; };
+    const device = (s) => { const d = el('div', 'device'); d.appendChild(s); return d; };
+    const clockEl = (sm) => { const c = el('div', `clock ${sm ? 'sm' : ''}`); c.dataset.clock = '1'; return c; };
+    const weatherEl = () => { const w = el('div', 'weather'); w.innerHTML = '<b>78° Sunny</b> · H 84 L 61'; return w; };
+    const state = { focus: false, timer: true, habits: true, countdown: true };
+    const ITEMS = {
+        focus: { v: '18:40', l: 'Focus', short: 'Focus', c: '#4f8cff' },
+        timer: { v: '3:12', l: 'Tea', short: 'Tea', c: '#f5b942' },
+        habits: { v: '2/4', l: 'Habits', short: 'Habits' },
+        countdown: { v: '3d', l: "Mom's bday", short: 'Mom' },
+    };
+    const glance = () => ['focus', 'timer', 'habits', 'countdown'].filter((k) => state[k]).map((k) => ITEMS[k]).slice(0, 3);
+    const reactive = [];
+    // a placeholder whose contents rebuild whenever the toggles change
+    const slot = (fn) => { const n = el('div', 'slot'); const r = () => n.replaceChildren(...[].concat(fn()).filter(Boolean)); reactive.push(r); r(); return n; };
+    const glanceStats = (colored) => slot(() => (glance().length ? stats(glance(), colored) : null));
+    const stats = (list, colored) => {
+        const s = el('div', 'stats');
+        list.forEach((x) => { const b = el('div', 'stat'); const v = el('div', 'v', x.v); if (colored && x.c) v.style.color = x.c; b.append(v, el('div', 'l', x.l)); s.appendChild(b); });
+        return s;
+    };
+    const updaters = [];
+
+    // ---------- A: sky ----------
+    const a = screen('sky');
+    const aStars = el('div', 'layer');
+    for (let i = 0; i < 28; i++) { const st = el('span', 'star'); st.style.left = `${8 + Math.random() * 84}%`; st.style.top = `${6 + Math.random() * 50}%`; st.style.animationDelay = `${Math.random() * 3}s`; aStars.appendChild(st); }
+    const aOrb = el('div', 'orb');
+    a.append(aStars, aOrb, clockEl(), el('div', 'date', DATE), weatherEl(), glanceStats());
+    updaters.push((h) => {
+        const c = sky(h);
+        a.style.background = `linear-gradient(180deg, ${c.top}, ${c.bottom})`;
+        const night = isNight(h);
+        aStars.style.opacity = night ? 1 : 0;
+        aOrb.className = `orb ${night ? 'moon' : 'sun'}`;
+        // sun: arc from left (sunrise) to right (sunset); moon: same arc across the night
+        let t;
+        if (!night) t = (h - SUNRISE) / (SUNSET - SUNRISE);
+        else { const len = 24 - (SUNSET - SUNRISE); t = ((h - SUNSET + 24) % 24) / len; }
+        t = Math.min(1, Math.max(0, t));
+        aOrb.style.left = `${lerp(14, 86, t)}%`;
+        aOrb.style.top = `${44 - Math.sin(t * Math.PI) * 24}%`;
+    });
+
+    // ---------- B: day ring ----------
+    const b = screen();
+    const bSvg = mk('svg', { viewBox: '-50 -50 100 100', class: 'layer' });
+    b.append(bSvg, clockEl(), el('div', 'date', DATE), weatherEl(), glanceStats());
+    const R = 46.2;
+    const ang = (h) => (h / 24) * 360 + 180;         // noon at top, midnight at bottom
+    const pt = (deg, r) => { const a = (deg - 90) * Math.PI / 180; return [Math.cos(a) * r, Math.sin(a) * r]; };
+    updaters.push((h) => {
+        bSvg.replaceChildren();
+        const N = 96;
+        for (let i = 0; i < N; i++) {
+            const h0 = i * 24 / N, h1 = (i + 1) * 24 / N;
+            const [x0, y0] = pt(ang(h0), R), [x1, y1] = pt(ang(h1) + .3, R);
+            const col = sky(h0 + .1).bottomHex ? sky(h0 + .1).bottom : '#333';
+            const past = h1 <= h + 1e-6 && h0 >= 0;
+            bSvg.appendChild(mk('path', { d: `M ${x0} ${y0} A ${R} ${R} 0 0 1 ${x1} ${y1}`, stroke: col, 'stroke-width': 3.4, fill: 'none', opacity: past ? 1 : .28 }));
+        }
+        [[SUNRISE, '☀'], [SUNSET, '☾']].forEach(([hh, g]) => { const [x, y] = pt(ang(hh), R - 6); bSvg.appendChild(mk('text', { x, y: y + 1.3, 'text-anchor': 'middle', 'font-size': 3.6, fill: 'rgba(242,244,248,.55)' }, g)); });
+        const [nx, ny] = pt(ang(h), R);
+        const c = sky(h).bottom;
+        bSvg.appendChild(mk('circle', { cx: nx, cy: ny, r: 3.4, fill: c, opacity: .35 }));
+        bSvg.appendChild(mk('circle', { cx: nx, cy: ny, r: 2.2, fill: '#fff', stroke: c, 'stroke-width': 1 }));
+    });
+
+
+    // ---------- I: sun ring (B's ring, A's sun and moon as the marker) ----------
+    const iS = screen();
+    const iSvg = mk('svg', { viewBox: '-50 -50 100 100', class: 'layer' });
+    const iGlow = el('div', 'layer');
+    const iOrb = el('div', 'orb');
+    iOrb.style.width = iOrb.style.height = 'calc(var(--size) * .075)';
+    iS.append(iGlow, iSvg, iOrb, clockEl(), el('div', 'date', DATE), weatherEl(), glanceStats());
+    updaters.push((h) => {
+        iSvg.replaceChildren();
+        const N = 96;
+        for (let i = 0; i < N; i++) {
+            const h0 = i * 24 / N, h1 = (i + 1) * 24 / N;
+            const [x0, y0] = pt(ang(h0), R), [x1, y1] = pt(ang(h1) + .3, R);
+            iSvg.appendChild(mk('path', { d: `M ${x0} ${y0} A ${R} ${R} 0 0 1 ${x1} ${y1}`, stroke: sky(h0 + .1).bottom, 'stroke-width': 3.4, fill: 'none', opacity: h1 <= h + 1e-6 ? 1 : .28 }));
+        }
+        const [nx, ny] = pt(ang(h), R);
+        const night = isNight(h);
+        iOrb.className = `orb ${night ? 'crescent' : 'sun'}`;
+        iOrb.style.left = `${50 + nx}%`; iOrb.style.top = `${50 + ny}%`;
+        // a soft wash of the current sky colour, centred on the sun or moon
+        const c = sky(h);
+        iGlow.style.background = `radial-gradient(circle at ${50 + nx}% ${50 + ny}%, ${night ? 'rgba(170,180,255,.16)' : c.bottom.replace('rgb', 'rgba').replace(')', ',.32)')}, transparent 55%)`;
+    });
+
+    // ---------- C: activity rings ----------
+    const c = screen();
+    const cSvg = mk('svg', { viewBox: '-50 -50 100 100', class: 'layer' });
+    // focus minutes and the workday are daily totals, so those rings always show; habits only when there are some
+    const ringSet = () => [
+        { frac: state.focus ? 69 / 120 : 50 / 120, col: '#4f8cff', v: state.focus ? '69m' : '50m', l: 'Focus' },
+        state.habits && { frac: 2 / 4, col: '#3fcf7f', v: '2/4', l: 'Habits' },
+        { frac: .62, col: '#ff6fae', v: '5h 10m', l: 'Workday' },
+    ].filter(Boolean);
+    const legend = el('div', 'legend');
+    reactive.push(() => {
+        cSvg.replaceChildren(); legend.replaceChildren();
+        ringSet().forEach(({ frac, col, v, l }, i) => {
+            const r = 46 - i * 3.7, circ = 2 * Math.PI * r;
+            cSvg.appendChild(mk('circle', { r, fill: 'none', stroke: col, 'stroke-opacity': .16, 'stroke-width': 3 }));
+            cSvg.appendChild(mk('circle', { r, fill: 'none', stroke: col, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-dasharray': `${circ * frac} ${circ}`, transform: 'rotate(-90)', style: `filter:drop-shadow(0 0 1.2px ${col})` }));
+            const it = el('div', 'it'); const vv = el('div', 'v', v); vv.style.color = col; it.append(vv, el('div', 'l', l)); legend.appendChild(it);
+        });
+    });
+    c.append(cSvg, clockEl(true), el('div', 'date', DATE), legend);
+
+    // ---------- D: colour chips ----------
+    const d = screen();
+    const wx = el('div', 'wx-chip'); wx.innerHTML = '☀ <b>78°</b> Sunny · H 84 L 61';
+    // Focus is always a chip (Start when idle); the others only when they have something to show
+    const chips = el('div', 'chips');
+    reactive.push(() => {
+        chips.replaceChildren();
+        [['Focus', state.focus ? '18:40' : 'Start', '#4f8cff', '◎', true], state.timer && ['Tea', '3:12', '#f5b942', '◷'], state.habits && ['Habits', '2/4', '#3fcf7f', '✓'], state.countdown && ["Mom's bday", '3d', '#ff6fae', '♥']].filter(Boolean).forEach(([l, v, h, ic, sel]) => {
+            const ch = el('div', `chip ${sel ? 'sel' : ''}`); ch.style.setProperty('--h', h);
+            const i = el('div', 'ic', ic); const tx = el('div'); tx.append(el('div', 'v', v), el('div', 'l', l));
+            ch.append(i, tx); chips.appendChild(ch);
+        });
+        chips.style.gridTemplateColumns = chips.children.length === 1 ? '1fr' : '1fr 1fr';
+        chips.style.width = chips.children.length === 1 ? '36%' : '70%';
+    });
+    d.append(clockEl(true), el('div', 'date', DATE), wx, chips);
+
+    // ---------- E: buddy ----------
+    const e = screen();
+    const face = mk('svg', { viewBox: '0 0 120 96', class: 'buddy' });
+    const defs = mk('defs'); const g = mk('linearGradient', { id: 'bg1', x1: 0, y1: 0, x2: 1, y2: 1 });
+    g.append(mk('stop', { offset: 0, 'stop-color': '#ff9a6b' }), mk('stop', { offset: 1, 'stop-color': '#ff5fa2' }));
+    defs.appendChild(g); face.appendChild(defs);
+    const body = mk('rect', { x: 14, y: 8, width: 92, height: 80, rx: 34, fill: 'url(#bg1)' });
+    const cheekL = mk('circle', { cx: 34, cy: 60, r: 6, fill: '#fff', opacity: .25 }), cheekR = mk('circle', { cx: 86, cy: 60, r: 6, fill: '#fff', opacity: .25 });
+    const eyes = mk('g'); const mouth = mk('path', { fill: 'none', stroke: '#2a0f22', 'stroke-width': 4, 'stroke-linecap': 'round' });
+    face.append(body, cheekL, cheekR, eyes, mouth);
+    const zz = el('div', 'zz', 'z'); zz.style.cssText = 'left:63%;top:24%;font-size:16px';
+    const bubble = el('div', 'bubble');
+    e.append(face, zz, clockEl(true), bubble);
+    const lines = () => [
+        state.focus && 'Focusing, <b>18:40</b> to go',
+        state.habits && '<b>2 habits</b> left today',
+        state.timer && 'Tea is ready in <b>3:12</b>',
+        state.countdown && "<b>Mom's birthday</b> in 3 days",
+        'Rain on <b>Thursday</b>',
+    ].filter(Boolean);
+    let li = 0;
+    const setBuddy = (h) => {
+        const night = isNight(h);
+        eyes.replaceChildren();
+        if (night) {
+            eyes.append(mk('path', { d: 'M 38 44 q 7 6 14 0', stroke: '#2a0f22', 'stroke-width': 4, fill: 'none', 'stroke-linecap': 'round' }), mk('path', { d: 'M 68 44 q 7 6 14 0', stroke: '#2a0f22', 'stroke-width': 4, fill: 'none', 'stroke-linecap': 'round' }));
+            mouth.setAttribute('d', 'M 55 66 q 5 3 10 0');
+            g.children[0].setAttribute('stop-color', '#7a83ff'); g.children[1].setAttribute('stop-color', '#b26bff');
+            zz.style.display = ''; bubble.innerHTML = 'Shh, it’s late. <b>Lights low.</b>';
+        } else {
+            eyes.append(mk('ellipse', { class: 'eye', cx: 45, cy: 44, rx: 6, ry: 8, fill: '#2a0f22' }), mk('ellipse', { class: 'eye', cx: 75, cy: 44, rx: 6, ry: 8, fill: '#2a0f22' }));
+            mouth.setAttribute('d', 'M 48 62 q 12 12 24 0');
+            const morning = h < 12;
+            g.children[0].setAttribute('stop-color', morning ? '#ffc65c' : '#ff9a6b'); g.children[1].setAttribute('stop-color', morning ? '#ff8a5c' : '#ff5fa2');
+            zz.style.display = 'none'; { const L = lines(); bubble.innerHTML = L[li % L.length]; }
+        }
+    };
+    updaters.push(setBuddy);
+    setInterval(() => { if (isNight(H)) return; bubble.style.opacity = 0; setTimeout(() => { li++; setBuddy(H); bubble.style.opacity = 1; }, 350); }, 3500);
+
+    // ---------- F: liquid hour ----------
+    const f = screen('liquid-scr');
+    const fLayer = el('div', 'layer liquid');
+    const fSvg = mk('svg', { viewBox: '0 0 100 100', preserveAspectRatio: 'none' });
+    const waveD = (amp) => { let d = 'M 0 0'; for (let x = 0; x <= 300; x += 25) d += ` Q ${x + 12.5} ${x / 25 % 2 ? amp : -amp} ${x + 25} 0`; return `${d} V 200 H 0 Z`; };
+    const w2g = mk('g'), w1g = mk('g');
+    const w2 = mk('path', { d: waveD(2.5), class: 'wave2' }), w1 = mk('path', { d: waveD(3.2), class: 'wave1' });
+    w2g.appendChild(w2); w1g.appendChild(w1); fSvg.append(w2g, w1g); fLayer.appendChild(fSvg);
+    f.append(fLayer, clockEl(), el('div', 'date', DATE), weatherEl(), glanceStats());
+    const HUES = ['#5b6cff', '#7a5cff', '#a35cff', '#ff5fa2', '#ff6b6b', '#ff8a4c', '#f5b942', '#c6d943', '#3fcf7f', '#2ec4b6', '#31a8f0', '#4f8cff'];
+    updaters.push((h) => {
+        const hr = Math.floor(h) % 12, minFrac = h % 1;
+        const col = HUES[hr];
+        const y = 100 - Math.max(.04, minFrac) * 100;
+        w1g.setAttribute('transform', `translate(0 ${y})`); w2g.setAttribute('transform', `translate(0 ${y - 1.5})`);
+        w1.setAttribute('fill', col); w1.setAttribute('fill-opacity', .55);
+        w2.setAttribute('fill', HUES[(hr + 1) % 12]); w2.setAttribute('fill-opacity', .3);
+    });
+
+
+    // ---------- G: weather hero ----------
+    const tempCol = (t) => { const S = [[40, '#4fc3f7'], [60, '#3fd0b8'], [72, '#f5d142'], [85, '#ff8a3d'], [100, '#ff4f4f']]; let i = 0; while (i < S.length - 2 && S[i + 1][0] <= t) i++; const [t0, c0] = S[i], [t1, c1] = S[i + 1]; return mix(c0, c1, Math.min(1, Math.max(0, (t - t0) / (t1 - t0)))); };
+    const gs = screen();
+    const hero = el('div', 'wx-hero');
+    hero.innerHTML = `<svg class="wx-icon" viewBox="0 0 60 60">
+        <g class="rays" stroke="#ffc34d" stroke-width="3" stroke-linecap="round">${[...Array(8)].map((_, i) => { const a = i * Math.PI / 4; return `<line x1="${30 + Math.cos(a) * 17}" y1="${30 + Math.sin(a) * 17}" x2="${30 + Math.cos(a) * 23}" y2="${30 + Math.sin(a) * 23}"/>`; }).join('')}</g>
+        <circle cx="30" cy="30" r="12" fill="url(#sunG)"/>
+        <defs><radialGradient id="sunG"><stop offset="0" stop-color="#fff2b3"/><stop offset="1" stop-color="#ffb02e"/></radialGradient></defs>
+        <g class="cloud"><path d="M 30 50 h 20 a 7 7 0 0 0 0 -14 a 10 10 0 0 0 -19 -2 a 8 8 0 0 0 -1 16 z" fill="#e9eef7" opacity=".92"/></g></svg>
+        <div class="wx-temp">78°</div>
+        <div class="wx-side"><b>Mostly sunny</b>Feels 80°<div class="range"><span>61</span><span class="bar"><i style="left:74%"></i></span><span>84</span></div></div>`;
+    const gClock = clockEl(true); gClock.style.fontSize = 'calc(var(--size) * .12)';
+    const ms = el('div', 'mini-stats');
+    reactive.push(() => { ms.innerHTML = glance().map((x) => `<span><b${x.c ? ` style="color:${x.c}"` : ''}>${x.v}</b>${x.short}</span>`).join(''); ms.style.display = glance().length ? '' : 'none'; });
+    gs.append(gClock, el('div', 'date', DATE), hero, ms);
+
+    // ---------- H: forecast arc ----------
+    const hs = screen();
+    const hSvg = mk('svg', { viewBox: '-50 -50 100 100', class: 'layer' });
+    hs.append(hSvg, clockEl(), el('div', 'date', DATE), glanceStats());
+    hs.style.justifyContent = 'flex-start'; hs.style.paddingTop = '21%';
+    // sample forecast that follows the preview time: low 61 near 5 AM, high 84 near 3 PM, a few clouds mid-afternoon
+    let FC = [], COND = [];
+    const forecast = (h) => {
+        FC = []; COND = [];
+        for (let i = 0; i <= 12; i++) {
+            const hh = (Math.floor(h) + i) % 24;
+            const rising = hh >= 5 && hh <= 15;
+            const t = rising ? (hh - 5) / 10 : ((hh - 15 + 24) % 24) / 14;       // 0..1 through the warm-up or cool-down
+            FC.push(Math.round(72.5 + (rising ? -1 : 1) * 11.5 * Math.cos(t * Math.PI)));
+            COND.push(isNight(hh + .5) ? (hh >= 1 && hh <= 4 ? '☁' : '☾') : (hh >= 13 && hh <= 15 ? '⛅' : '☀'));
+        }
+    };
+    updaters.push((h) => {
+        forecast(h);
+        hSvg.replaceChildren();
+        const R2 = 43, A0 = 140, A1 = 220;     // bottom arc, left to right through the bottom (angles from top, clockwise)
+        const angAt = (i) => A1 - (i / 12) * (A1 - A0);
+        for (let i = 0; i < 12; i++) {
+            const [x0, y0] = pt(angAt(i), R2), [x1, y1] = pt(angAt(i + 1) - .4, R2);
+            hSvg.appendChild(mk('path', { d: `M ${x0} ${y0} A ${R2} ${R2} 0 0 0 ${x1} ${y1}`, stroke: tempCol((FC[i] + FC[i + 1]) / 2), 'stroke-width': 4, fill: 'none', 'stroke-linecap': i === 0 || i === 11 ? 'round' : 'butt' }));
+        }
+        [0, 4, 8, 12].forEach((i) => {
+            const a = angAt(i);
+            const [ix, iy] = pt(a, R2 - 7.5), [tx, ty] = pt(a, R2 - 12.5), [lx, ly] = pt(a, R2 - 16.2);
+            hSvg.appendChild(mk('text', { x: ix, y: iy + 1.6, 'text-anchor': 'middle', 'font-size': 4.6, fill: { '☀': '#ffc34d', '⛅': '#ffd36b', '☾': '#c9d3ff', '☁': '#cfd6e4' }[COND[i]] }, COND[i] + '\uFE0E'));
+            const t = mk('text', { x: tx, y: ty + 1.1, 'text-anchor': 'middle', class: 'fc-lbl' }, `${FC[i]}°`); t.setAttribute('fill', tempCol(FC[i])); hSvg.appendChild(t);
+            const hh = (Math.floor(h) + i) % 24;
+            hSvg.appendChild(mk('text', { x: lx, y: ly + 1, 'text-anchor': 'middle', class: 'fc-sub' }, i === 0 ? 'Now' : `${((hh + 11) % 12) + 1}${hh < 12 ? 'a' : 'p'}`));
+        });
+        const [nx, ny] = pt(angAt(0), R2);
+        hSvg.appendChild(mk('circle', { cx: nx, cy: ny, r: 2.3, fill: '#fff', stroke: '#0b0d11', 'stroke-width': .8 }));
+    });
+
+
+    // ---------- J: sun ring + forecast arc (I and H) ----------
+    const jS = screen();
+    const jSvg = mk('svg', { viewBox: '-50 -50 100 100', class: 'layer' });
+    const jGlow = el('div', 'layer');
+    const jOrb = el('div', 'orb');
+    jOrb.style.width = jOrb.style.height = 'calc(var(--size) * .075)';
+    const jClock = clockEl(true); jClock.style.fontSize = 'calc(var(--size) * .13)';
+    jS.append(jGlow, jSvg, jOrb, jClock, el('div', 'date', DATE), glanceStats());
+    jS.style.justifyContent = 'flex-start'; jS.style.paddingTop = '22%';
+    updaters.push((h) => {
+        forecast(h);
+        jSvg.replaceChildren();
+        // outer: the 24-hour sky ring
+        const N = 96;
+        for (let i = 0; i < N; i++) {
+            const h0 = i * 24 / N, h1 = (i + 1) * 24 / N;
+            const [x0, y0] = pt(ang(h0), R), [x1, y1] = pt(ang(h1) + .3, R);
+            jSvg.appendChild(mk('path', { d: `M ${x0} ${y0} A ${R} ${R} 0 0 1 ${x1} ${y1}`, stroke: sky(h0 + .1).bottom, 'stroke-width': 3.4, fill: 'none', opacity: h1 <= h + 1e-6 ? 1 : .28 }));
+        }
+        const [nx, ny] = pt(ang(h), R);
+        const night = isNight(h);
+        jOrb.className = `orb ${night ? 'crescent' : 'sun'}`;
+        jOrb.style.left = `${50 + nx}%`; jOrb.style.top = `${50 + ny}%`;
+        const c = sky(h);
+        jGlow.style.background = `radial-gradient(circle at ${50 + nx}% ${50 + ny}%, ${night ? 'rgba(170,180,255,.16)' : c.bottom.replace('rgb', 'rgba').replace(')', ',.32)')}, transparent 55%)`;
+        // inner: the next 12 hours, along the bottom
+        const R3 = 39.5, A0 = 133, A1 = 227;
+        const angAt = (i) => A1 - (i / 12) * (A1 - A0);
+        for (let i = 0; i < 12; i++) {
+            const [x0, y0] = pt(angAt(i), R3), [x1, y1] = pt(angAt(i + 1) - .4, R3);
+            jSvg.appendChild(mk('path', { d: `M ${x0} ${y0} A ${R3} ${R3} 0 0 0 ${x1} ${y1}`, stroke: tempCol((FC[i] + FC[i + 1]) / 2), 'stroke-width': 3, fill: 'none', 'stroke-linecap': i === 0 || i === 11 ? 'round' : 'butt' }));
+        }
+        [0, 4, 8, 12].forEach((i) => {
+            const a = angAt(i);
+            const [ix, iy] = pt(a, R3 - 6), [tx, ty] = pt(a, R3 - 10.5), [lx, ly] = pt(a, R3 - 14);
+            jSvg.appendChild(mk('text', { x: ix, y: iy + 1.6, 'text-anchor': 'middle', 'font-size': 4.4, fill: { '☀': '#ffc34d', '⛅': '#ffd36b', '☾': '#c9d3ff', '☁': '#cfd6e4' }[COND[i]] }, COND[i] + '\uFE0E'));
+            const t = mk('text', { x: tx, y: ty + 1.1, 'text-anchor': 'middle', class: 'fc-lbl' }, `${FC[i]}°`); t.setAttribute('fill', tempCol(FC[i])); jSvg.appendChild(t);
+            const hh = (Math.floor(h) + i) % 24;
+            jSvg.appendChild(mk('text', { x: lx, y: ly + 1, 'text-anchor': 'middle', class: 'fc-sub' }, i === 0 ? 'Now' : `${((hh + 11) % 12) + 1}${hh < 12 ? 'a' : 'p'}`));
+        });
+        const [fx, fy] = pt(angAt(0), R3);
+        jSvg.appendChild(mk('circle', { cx: fx, cy: fy, r: 1.9, fill: '#fff', stroke: '#0b0d11', 'stroke-width': .7 }));
+    });
+
+    // ---------- cards ----------
+    const card = (title, desc, pros, cons, scr) => {
+        const cd = el('div', 'card'); cd.appendChild(device(scr));
+        cd.append(el('h2', '', title), el('p', '', desc));
+        const ul = el('ul');
+        pros.forEach((t) => { const li = el('li'); li.innerHTML = `<b>+</b> ${t}`; ul.appendChild(li); });
+        cons.forEach((t) => { const li = el('li'); li.innerHTML = `<b>−</b> ${t}`; ul.appendChild(li); });
+        cd.appendChild(ul); return cd;
+    };
+    const grid = document.getElementById('grid');
+    grid.append(
+        card('A. Living sky', 'The whole background is the sky outside: dawn orange, blue midday, pink sunset, starry night. A sun or moon rides an arc across the top half.',
+            ['the most color for the least clutter', 'tells time of day from across the room', 'works offline (sunrise/sunset from location)'], ['bright midday screen on a dark desk', 'text sits on a changing background'], a),
+        card('B. Day ring', 'A 24-hour band around the edge, colored by the sky at each hour. The part of the day already gone is lit; the white dot is now. Same geometry as World’s ring.',
+            ['color without touching the center', 'matches the World panel', 'calm, no motion'], ['abstract until you learn it', 'shares the edge with dials on other panels'], b),
+        card('I. Sun ring', 'B with A’s sun and moon: the sky-colored 24-hour band around the edge, with the sun riding it during the day and the moon at night. A soft glow of the current sky color follows it. Noon is at the top, midnight at the bottom.',
+            ['B’s calm ring, but you can read it without learning it', 'some of A’s color while keeping the dark background', 'works offline'], ['shares the edge with dials on other panels'], iS),
+        card('C. Daily rings', 'Three progress rings: focus minutes toward a goal, habits done, and how far through the workday you are. The glance stats become the ring legend.',
+            ['makes progress visible and a bit motivating', 'strong, simple color'], ['needs goals set (focus minutes, workday hours)', 'drops the weather line and the countdown'], c),
+        card('D. Color chips', 'Each panel gets its own hue (Focus blue, Timers amber, Habits green, Days pink) and the glance stats become colored chips with icons. The hue could carry into the nav pill and each panel’s accents.',
+            ['a color system for the whole device, not just Home', 'four glance slots instead of three', 'chips are bigger knob targets'], ['busier', 'smaller clock'], d),
+        card('E. Buddy face', 'It’s called Desk buddy, so give it a face. It blinks, changes color through the day, falls asleep at night, and a speech bubble cycles through what matters right now.',
+            ['personality; the thing people remember', 'bubble surfaces one item at a time, readable'], ['can feel gimmicky after a week', 'cycling bubble is motion in your peripheral vision'], e),
+        card('F. Hour fill', 'The screen fills like a glass over each hour, then empties and starts again in the next hue. Color tells the hour, fill level the minutes.',
+            ['ambient and playful', 'readable at a distance without reading digits'], ['constant gentle motion', 'novelty more than information'], f),
+        card('G. Weather hero', 'Weather becomes the centerpiece: an animated icon, a big temperature in warm-to-cool color, and a today’s-range bar with a dot for where it is now. Clock gets smaller; glance stats shrink to one line.',
+            ['the weather is the first thing you read', 'range bar answers "will it get hotter" without numbers'], ['clock is no longer the hero', 'only useful when Wi-Fi is set up; falls back to the current Home without it'], gs),
+        card('H. Forecast arc', 'The next 12 hours run along the bottom edge as a temperature-colored band, with icons and temps every 4 hours. Center stays as today’s Home. Rotate could scrub the arc in a later version.',
+            ['weather becomes colorful without crowding the clock', 'answers "when does it cool off" at a glance', 'uses the round edge'], ['small labels', 'no Wi-Fi means an empty edge'], hs),
+        card('J. Sun ring with forecast', 'I and H together: the sky-colored 24-hour ring with the sun or moon on the outer edge, and the next 12 hours of weather on an inner arc along the bottom. The clock is smaller to make room, and the weather line is gone because the arc replaces it.',
+            ['time of day and weather both shown as color, nothing in the center but the clock and glance', 'works without Wi-Fi as plain I (the inner arc just disappears)'], ['two arcs to learn', 'smaller clock', 'loses today’s high and low as numbers'], jS),
+    );
+
+    // ---------- time scrubber ----------
+    const hr = document.getElementById('hr'), out = document.getElementById('hrOut');
+    let live = true;
+    const nowH = () => { const n = new Date(); return n.getHours() + n.getMinutes() / 60; };
+    const apply = (h) => {
+        H = h; hr.value = h; out.textContent = `${fmt(h)} ${ampm(h)}`;
+        document.querySelectorAll('[data-clock]').forEach((n) => { n.textContent = fmt(h); });
+        updaters.forEach((u) => u(h));
+    };
+    hr.addEventListener('input', () => { live = false; apply(parseFloat(hr.value)); });
+    document.getElementById('nowBtn').addEventListener('click', () => { live = true; apply(nowH()); });
+    setInterval(() => { if (live) apply(nowH()); }, 15000);
+    document.querySelectorAll('#toggles input').forEach((cb) => cb.addEventListener('change', () => {
+        state[cb.dataset.k] = cb.checked;
+        reactive.forEach((r) => r());
+        apply(H);
+    }));
+    reactive.forEach((r) => r());
+    apply(nowH());
+})();
+</script>
+</body>
+</html>

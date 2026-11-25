@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>More-items cue options</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --ink-faint: #4a505c; --accent: #4f8cff; --ok: #3fcf7f;
+        --size: 290px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1280px; }
+    .lead { color: var(--page-muted); margin: 0 auto 24px; max-width: 1280px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; max-width: 1280px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .card h2 { font-size: 15px; margin: 4px 0 0; align-self: flex-start; }
+    .card ul { margin: 0; padding-left: 18px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .ctl { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .ctl button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--page-text); cursor: pointer; }
+    .ctl button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .device { width: calc(var(--size) + 24px); height: calc(var(--size) + 24px); border-radius: 50%; background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg); box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f; display: grid; place-items: center; }
+    .screen { position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden; background: var(--screen); color: var(--ink); box-shadow: inset 0 0 0 3px #000; user-select: none; touch-action: none; cursor: grab; }
+    .nav { position: absolute; left: 0; right: 0; top: 10.5%; display: flex; justify-content: center; gap: 14px; }
+    .nav i { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid rgba(255, 255, 255, .3); }
+    .nav i.on { border-color: #fff; box-shadow: 0 0 6px rgba(79, 140, 255, .8); }
+    .win { position: absolute; left: 0; right: 0; }
+    .inner { position: absolute; left: 0; right: 0; top: 0; }
+    .row { position: absolute; left: 50%; display: flex; align-items: center; gap: 8px; border-radius: 999px; transform: translateX(-50%); white-space: nowrap; }
+    .row .mk { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); flex: none; }
+    .row .mk.ok { background: var(--ok); }
+    .row .nm { flex: 1; }
+    .row .v { color: var(--ink-dim); font-size: .82em; }
+    .row .sub { display: block; color: var(--ink-dim); font-size: .6em; }
+    .row.big { box-shadow: inset 0 0 0 2px var(--accent); background: #0d111a; }
+    .count { position: absolute; left: 0; right: 0; bottom: 7.5%; text-align: center; color: var(--ink-dim); font-size: calc(var(--size) * .04); }
+    /* B, D: a curved scroll bar along the right edge */
+    .bar { position: absolute; inset: 0; pointer-events: none; }
+    .bar circle { fill: none; stroke-linecap: round; }
+    /* C: chevron */
+    .chev { position: absolute; left: 50%; bottom: 13%; transform: translateX(-50%); color: var(--ink-dim); transition: opacity .2s; }
+    .chev svg { width: 18px; height: 18px; }
+    .chev path { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .chev.up { top: 22%; bottom: auto; }
+    .chev.hide { opacity: 0; }
+</style>
+</head>
+<body>
+<h1>Showing that a list goes on</h1>
+<p class="lead">The Settings list (13 rows). Drag on a screen to scroll it, or use the buttons. Look at the bottom of each screen at the top of the list, then scroll to the end.</p>
+<div class="grid">
+    <div class="card">
+        <h2>Now</h2>
+        <div class="device"><div class="screen" data-opt="now"></div></div>
+        <div class="ctl" data-for="now"></div>
+        <ul><li>Rows end cleanly above "1 / 13"; nothing looks cut off, so the list reads as complete.</li></ul>
+    </div>
+    <div class="card">
+        <h2>A: a half row peeks at the bottom</h2>
+        <div class="device"><div class="screen" data-opt="a"></div></div>
+        <div class="ctl" data-for="a"></div>
+        <ul>
+            <li>The list window ends mid-row, so the next row is visibly cut in half under a short fade: the usual phone cue.</li>
+            <li>The counter moves below the cut; at the end of the list no row peeks.</li>
+            <li>Costs nothing on screen; works for every list the same way.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>B: curved scroll bar on the right edge</h2>
+        <div class="device"><div class="screen" data-opt="b"></div></div>
+        <div class="ctl" data-for="b"></div>
+        <ul>
+            <li>A thin arc follows the round edge (as round watches do): its length is how much shows, its place is where you are.</li>
+            <li>Replaces the "1 / 13" counter. Always visible, or only while scrolling.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>C: A + B together (recommended)</h2>
+        <div class="device"><div class="screen" data-opt="c"></div></div>
+        <div class="ctl" data-for="c"></div>
+        <ul>
+            <li>The peeking row says "there's more right here"; the arc says how much and where you are.</li>
+            <li>The counter goes; the arc carries its job.</li>
+        </ul>
+    </div>
+</div>
+<script>
+(() => {
+    const ITEMS = [
+        ['Wi-Fi', 'Home Wi-Fi', 'Connected', 'ok'], ['Date & time', 'Automatic', 'Nov 10, 12:49 PM'], ['Time zone', 'Phoenix', 'UTC-7'],
+        ['Time format', '12-hour', 'Auto, from the location'], ['Brightness', '80%', 'Auto brightness on'], ['Auto brightness', 'On', 'Wake 6:00 AM, bed 10:00 PM'],
+        ['Stand-up reminder', 'Off', 'Stretch your legs'], ['Water reminder', '30 min', 'Drink some water'], ['Eye break', 'Off', '20-20-20'],
+        ['Reminder hours', '8 AM-6 PM', 'Weekdays, on now'], ['Weather', 'Phoenix', 'Location and units'], ['Return to Home', 'After 2 min', 'When idle'],
+        ['Panels', '10 shown', 'Show, hide and reorder'],
+    ];
+    const S = { now: 0, a: 0, b: 0, c: 0 };
+    const SZ = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--size'));
+    // Geometry (fractions of the screen): row pitch, centre row's extra height, wheel centre.
+    const P = 0.112, E = 0.06, CY = 0.5;
+    const chord = (y) => 2 * Math.sqrt(Math.max(0, 0.25 - y * y));
+
+    const render = (opt) => {
+        const scr = document.querySelector(`.screen[data-opt="${opt}"]`), size = SZ(), pos = S[opt];
+        const peek = opt === 'a' || opt === 'c', bar = opt === 'b' || opt === 'c';
+        // The list window: Now shows rows down to ~0.80 then the counter; A/C cut at 0.86 so the
+        // row 2.6 below the centre is half visible, under a fade.
+        const top = 0.2, bottom = peek ? 0.9 : 0.86;
+        let html = `<div class="nav"><i></i><i></i><i class="on"></i></div>`;
+        const mask = peek ? `-webkit-mask-image:linear-gradient(#000 0 80%, transparent 100%);mask-image:linear-gradient(#000 0 80%, transparent 100%)` : '';
+        html += `<div class="win" style="top:${top * 100}%;height:${(bottom - top) * 100}%;overflow:hidden;${mask}"><div class="inner">`;
+        ITEMS.forEach((it, i) => {
+            const d = i - pos, ad = Math.abs(d), a = Math.max(0, 1 - ad);
+            const y = d * P + Math.sign(d) * Math.min(ad, 1) * E / 2;
+            const h = P + a * E;
+            // Now: rows fade past 2 above / 2.6 below the centre. A/C: no fade below (the window cuts instead).
+            let fade = Math.min(1, Math.max(0, (d < 0 ? 2.0 : 2.6) - ad));
+            if (peek && d > 0) fade = 1;
+            if (fade <= 0) return;
+            const w = chord(Math.abs(y) + (ad < 0.5 ? 0 : h * 0.3)) * 0.93;
+            const big = a > 0.5;
+            const fs = (big ? 0.054 : 0.046) * size;
+            const sub = big ? `<span class="sub">${it[2]}</span>` : '';
+            html += `<div class="row ${big ? 'big' : ''}" style="top:${(CY + y - h / 2 - top) * size}px;height:${h * size}px;width:${w * size}px;padding:0 ${size * .05}px;font-size:${fs}px;opacity:${fade}">
+                ${big ? '' : `<span class="mk ${it[3] || ''}"></span>`}<span class="nm">${it[0]}${sub}</span><span class="v">${it[1]}</span></div>`;
+        });
+        html += `</div></div>`;
+        if (!bar) html += `<div class="count" style="${peek ? 'bottom:4%' : ''}">${Math.round(pos) + 1} / ${ITEMS.length}</div>`;
+        if (bar) {
+            // Arc on the right edge from -40deg to +40deg (0 = 3 o'clock); thumb = visible share.
+            const R = 46.5, span = 80, vis = 4.6 / ITEMS.length;
+            const len = span * vis, at = -span / 2 + (span - len) * (pos / (ITEMS.length - 1));
+            const C = 2 * Math.PI * R;
+            const arc = (a0, a1, col, w) => `<circle cx="50" cy="50" r="${R}" stroke="${col}" stroke-width="${w}" stroke-dasharray="${C * (a1 - a0) / 360} ${C}" transform="rotate(${a0} 50 50)"/>`;
+            html += `<svg class="bar" viewBox="0 0 100 100">${arc(-span / 2, span / 2, 'rgba(255,255,255,.1)', 1.6)}${arc(at, at + len, 'rgba(242,244,248,.7)', 1.6)}</svg>`;
+        }
+        scr.innerHTML = html;
+        const ctl = document.querySelector(`.ctl[data-for="${opt}"]`);
+        ctl.innerHTML = '<button data-k="top">Top</button><button data-k="up">Scroll up</button><button data-k="down">Scroll down</button><button data-k="end">End</button>';
+    };
+    const go = (opt, to) => {
+        const from = S[opt], t0 = performance.now();
+        to = Math.max(0, Math.min(ITEMS.length - 1, to));
+        const step = (t) => { const u = Math.min(1, (t - t0) / 260), e = 1 - Math.pow(1 - u, 3); S[opt] = from + (to - from) * e; render(opt); if (u < 1) requestAnimationFrame(step); };
+        requestAnimationFrame(step);
+    };
+    document.addEventListener('click', (e) => {
+        const b = e.target.closest('.ctl button');
+        if (!b) return;
+        const opt = b.parentElement.dataset.for, k = b.dataset.k, p = Math.round(S[opt]);
+        go(opt, k === 'top' ? 0 : k === 'end' ? ITEMS.length - 1 : p + (k === 'up' ? -1 : 1));
+    });
+    document.querySelectorAll('.screen').forEach((scr) => {
+        let drag = null;
+        scr.addEventListener('pointerdown', (e) => { drag = { y: e.clientY, p: S[scr.dataset.opt] }; scr.setPointerCapture(e.pointerId); });
+        scr.addEventListener('pointermove', (e) => {
+            if (!drag) return;
+            const opt = scr.dataset.opt;
+            S[opt] = Math.max(-0.4, Math.min(ITEMS.length - 0.6, drag.p + (drag.y - e.clientY) / (SZ() * P)));
+            render(opt);
+        });
+        scr.addEventListener('pointerup', () => { if (!drag) return; const opt = scr.dataset.opt; drag = null; go(opt, Math.round(S[opt])); });
+    });
+    Object.keys(S).forEach(render);
+})();
+</script>
+</body>
+</html>

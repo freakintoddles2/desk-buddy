@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wheel styles</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --accent: #4f8cff;
+        --size: 340px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1180px; }
+    .lead { color: var(--page-muted); margin: 0 auto 24px; max-width: 1180px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr)); gap: 20px; max-width: 1180px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .card h2 { font-size: 15px; margin: 14px 0 4px; align-self: flex-start; }
+    .card p { margin: 0 0 6px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .card ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; color: var(--page-muted); align-self: flex-start; }
+    .card li b { color: var(--page-text); font-weight: 600; }
+    .rec { margin-top: 10px; font-size: 11px; font-weight: 700; color: var(--accent); align-self: flex-start; text-transform: uppercase; letter-spacing: .08em; }
+
+    .device {
+        width: calc(var(--size) + 28px); height: calc(var(--size) + 28px); border-radius: 50%;
+        background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f;
+        display: grid; place-items: center; cursor: pointer;
+    }
+    .screen {
+        position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden;
+        background: var(--screen); color: var(--ink); box-shadow: inset 0 0 0 3px #000;
+    }
+    .screen svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .spin { transform-origin: 50px 50px; }
+    .hud { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; text-align: center; }
+    .hint { color: var(--page-muted); font-size: 12px; margin-top: 8px; }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+</style>
+</head>
+<body>
+    <h1>Spin the wheel: style options</h1>
+    <p class="lead">The wheel fills the round screen in every option. Click a device to spin it. The set is "Lunch"; the real wheel would also offer Yes or no, Next step, and the others.</p>
+    <div class="grid" id="grid"></div>
+
+<script>
+(() => {
+    'use strict';
+    const OPTS = ['Tacos', 'Pizza', 'Salad', 'Sushi', 'Burgers', 'Thai'];
+    const N = OPTS.length;
+    const SEG = 360 / N;
+    const NS = 'http://www.w3.org/2000/svg';
+    const mk = (tag, attrs = {}, text) => {
+        const n = document.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+        if (text != null) n.textContent = text;
+        return n;
+    };
+    const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+    const pt = (deg, r) => [50 + r * Math.sin(deg * Math.PI / 180), 50 - r * Math.cos(deg * Math.PI / 180)];
+    const wedge = (i, r0, r1) => {
+        const a0 = i * SEG, a1 = (i + 1) * SEG;
+        const [x0, y0] = pt(a0, r1), [x1, y1] = pt(a1, r1);
+        if (!r0) return `M50 50 L${x0} ${y0} A${r1} ${r1} 0 0 1 ${x1} ${y1} Z`;
+        const [x2, y2] = pt(a1, r0), [x3, y3] = pt(a0, r0);
+        return `M${x0} ${y0} A${r1} ${r1} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${r0} ${r0} 0 0 0 ${x3} ${y3} Z`;
+    };
+    // A label that reads outward from the centre along the middle of segment i.
+    const radialLabel = (g, i, r, attrs) => {
+        const mid = (i + 0.5) * SEG;
+        g.appendChild(mk('text', { x: 50, y: 50 - r, 'text-anchor': 'middle', 'dominant-baseline': 'middle', transform: `rotate(${mid} 50 50)`, ...attrs }, OPTS[i]));
+    };
+    const under = (rot) => Math.floor((((360 - (rot % 360)) % 360) + 360) % 360 / SEG) % N;   // index at 12 o'clock
+
+    // Spinning: ease-out over ~4s; each style gets a per-frame hook (ticker, live label).
+    const spinner = (g, onFrame, onDone) => {
+        let rot = 0, busy = false;
+        return () => {
+            if (busy) return;
+            busy = true;
+            const from = rot, to = rot + 360 * 5 + Math.random() * 360, t0 = performance.now(), dur = 4200;
+            const step = (t) => {
+                const k = Math.min(1, (t - t0) / dur);
+                const e = 1 - Math.pow(1 - k, 4);
+                rot = from + (to - from) * e;
+                g.setAttribute('transform', `rotate(${rot} 50 50)`);
+                if (onFrame) onFrame(rot);
+                if (k < 1) requestAnimationFrame(step); else { busy = false; onDone(under(rot)); }
+            };
+            requestAnimationFrame(step);
+        };
+    };
+
+    // ---------- A: full-bleed classic ----------
+    const styleA = () => {
+        const COLORS = ['#2f6fe0', '#6a4ce0', '#b53ad8', '#d9475a', '#d98a1f', '#2a9e60'];
+        const s = mk('svg', { viewBox: '0 0 100 100' });
+        const g = mk('g');
+        OPTS.forEach((_, i) => {
+            g.appendChild(mk('path', { d: wedge(i, 0, 50), fill: COLORS[i], stroke: '#0b0d11', 'stroke-width': 0.5 }));
+            radialLabel(g, i, 32, { fill: '#fff', 'font-size': 6, 'font-weight': 700 });
+        });
+        s.appendChild(g);
+        s.appendChild(mk('path', { d: 'M46.5 1 L53.5 1 L50 9 Z', fill: '#fff', stroke: '#0b0d11', 'stroke-width': 0.6 }));
+        s.appendChild(mk('circle', { cx: 50, cy: 50, r: 13, fill: '#0b0d11', stroke: 'rgba(255,255,255,.2)', 'stroke-width': 0.6 }));
+        const res = mk('text', { x: 50, y: 50.5, 'text-anchor': 'middle', 'dominant-baseline': 'middle', fill: '#fff', 'font-size': 5, 'font-weight': 700 }, 'Spin');
+        s.appendChild(res);
+        return { node: s, spin: spinner(g, () => { res.textContent = ''; }, (i) => { res.textContent = OPTS[i]; }) };
+    };
+
+    // ---------- B: neon on black ----------
+    const styleB = () => {
+        const COLORS = ['#4f8cff', '#a66bff', '#ff5fd2', '#ff6b6b', '#f5b942', '#3fcf7f'];
+        const s = mk('svg', { viewBox: '0 0 100 100' });
+        const defs = mk('defs');
+        defs.innerHTML = '<filter id="glowB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+        s.appendChild(defs);
+        const g = mk('g');
+        OPTS.forEach((_, i) => {
+            g.appendChild(mk('path', { d: wedge(i, 0, 49), fill: COLORS[i], 'fill-opacity': 0.1 }));
+            g.appendChild(mk('path', { d: wedge(i, 44, 48.5), fill: COLORS[i], filter: 'url(#glowB)' }));
+            const [x, y] = pt(i * SEG, 48.5);
+            g.appendChild(mk('line', { x1: 50, y1: 50, x2: x, y2: y, stroke: 'rgba(255,255,255,.18)', 'stroke-width': 0.35 }));
+            radialLabel(g, i, 30, { fill: COLORS[i], 'font-size': 5.6, 'font-weight': 700, filter: 'url(#glowB)' });
+        });
+        s.appendChild(g);
+        s.appendChild(mk('path', { d: 'M50 10 L47 2 L53 2 Z', fill: '#fff', filter: 'url(#glowB)' }));
+        s.appendChild(mk('circle', { cx: 50, cy: 50, r: 12, fill: '#0b0d11', stroke: '#4f8cff', 'stroke-width': 0.7, filter: 'url(#glowB)' }));
+        const res = mk('text', { x: 50, y: 50.5, 'text-anchor': 'middle', 'dominant-baseline': 'middle', fill: '#fff', 'font-size': 4.8, 'font-weight': 700 }, 'Spin');
+        s.appendChild(res);
+        return { node: s, spin: spinner(g, () => { res.textContent = ''; }, (i) => { res.textContent = OPTS[i]; res.setAttribute('fill', COLORS[i]); }) };
+    };
+
+    // ---------- C: carnival: rim lights, pegs and a flapper that kicks on each peg ----------
+    const styleC = () => {
+        const COLORS = ['#e8453c', '#f4f1e8', '#e8453c', '#f4f1e8', '#e8453c', '#f4f1e8'];
+        const TEXT = ['#fff', '#7a1f1a', '#fff', '#7a1f1a', '#fff', '#7a1f1a'];
+        const s = mk('svg', { viewBox: '0 0 100 100' });
+        s.appendChild(mk('circle', { cx: 50, cy: 50, r: 50, fill: '#5a1712' }));
+        const g = mk('g');
+        OPTS.forEach((_, i) => {
+            g.appendChild(mk('path', { d: wedge(i, 0, 43), fill: COLORS[i] }));
+            radialLabel(g, i, 27, { fill: TEXT[i], 'font-size': 6, 'font-weight': 800, 'letter-spacing': 0.2 });
+            const [px, py] = pt(i * SEG, 41.5);
+            g.appendChild(mk('circle', { cx: px, cy: py, r: 1.3, fill: '#f5c542', stroke: '#7a4a10', 'stroke-width': 0.3 }));
+        });
+        s.appendChild(g);
+        const bulbs = [];
+        for (let k = 0; k < 24; k++) {
+            const [x, y] = pt(k * 15, 46.6);
+            const b = mk('circle', { cx: x, cy: y, r: 1.5, fill: k % 2 ? '#ffe9a3' : '#8a5a1a' });
+            bulbs.push(b);
+            s.appendChild(b);
+        }
+        const flap = mk('path', { d: 'M50 12 L47.3 3 Q50 1.5 52.7 3 Z', fill: '#f5c542', stroke: '#7a4a10', 'stroke-width': 0.4 });
+        const flapG = mk('g');
+        flapG.appendChild(flap);
+        s.appendChild(flapG);
+        s.appendChild(mk('circle', { cx: 50, cy: 50, r: 9, fill: '#f5c542', stroke: '#7a4a10', 'stroke-width': 0.6 }));
+        const res = mk('text', { x: 50, y: 50.5, 'text-anchor': 'middle', 'dominant-baseline': 'middle', fill: '#5a1712', 'font-size': 4, 'font-weight': 800 }, 'SPIN');
+        s.appendChild(res);
+        let lastPeg = 0, phase = 0;
+        const chase = setInterval(() => { phase ^= 1; bulbs.forEach((b, k) => b.setAttribute('fill', (k + phase) % 2 ? '#ffe9a3' : '#8a5a1a')); }, 500);
+        void chase;
+        return {
+            node: s,
+            spin: spinner(g, (rot) => {
+                res.textContent = '';
+                const peg = Math.floor(rot / SEG);
+                if (peg !== lastPeg) { lastPeg = peg; flapG.setAttribute('transform', 'rotate(-14 50 3)'); setTimeout(() => flapG.removeAttribute('transform'), 60); }
+            }, (i) => { res.textContent = OPTS[i].toUpperCase(); }),
+        };
+    };
+
+    // ---------- D: rim wheel with a live readout ----------
+    // Only the outer band is the wheel; the middle shows whatever is under the pointer,
+    // updating as it spins, like a slot machine settling.
+    const styleD = () => {
+        const COLORS = ['#4f8cff', '#7a5cff', '#c94cf0', '#ff6b6b', '#f5b942', '#3fcf7f'];
+        const s = mk('svg', { viewBox: '0 0 100 100' });
+        const g = mk('g');
+        OPTS.forEach((_, i) => {
+            g.appendChild(mk('path', { d: wedge(i, 34, 49.5), fill: COLORS[i], stroke: '#0b0d11', 'stroke-width': 0.6 }));
+            radialLabel(g, i, 41.8, { fill: '#0b0d11', 'font-size': 4.2, 'font-weight': 800 });
+        });
+        s.appendChild(g);
+        s.appendChild(mk('path', { d: 'M50 33 L47 37.5 L53 37.5 Z', fill: '#fff' }));
+        const label = mk('text', { x: 50, y: 49, 'text-anchor': 'middle', 'dominant-baseline': 'middle', fill: '#fff', 'font-size': 9, 'font-weight': 300 }, OPTS[0]);
+        const sub = mk('text', { x: 50, y: 59, 'text-anchor': 'middle', fill: '#8b93a3', 'font-size': 3.2, 'font-weight': 600, 'letter-spacing': 0.6 }, 'LUNCH');
+        s.append(label, sub);
+        return {
+            node: s,
+            spin: spinner(g, (rot) => { const i = under(rot); label.textContent = OPTS[i]; label.setAttribute('fill', COLORS[i]); sub.textContent = ''; },
+                (i) => { label.textContent = OPTS[i]; label.setAttribute('fill', '#fff'); sub.textContent = 'LUNCH'; }),
+        };
+    };
+
+    // ---------- F: B + D. Neon rim wheel with a live, glowing readout ----------
+    // Only the outer band spins. Segments are dark with a glowing outer edge in their color;
+    // the middle shows what's under the pointer as it flies past, in that segment's color,
+    // with an inner ring that takes the same color. curved = labels follow the rim (upright).
+    let fid = 0;
+    const styleF = (curved) => {
+        const COLORS = ['#4f8cff', '#a66bff', '#ff5fd2', '#ff6b6b', '#f5b942', '#3fcf7f'];
+        const id = `F${fid++}`;
+        const s = mk('svg', { viewBox: '0 0 100 100' });
+        const defs = mk('defs');
+        defs.innerHTML = `<filter id="glow${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="soft${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2"/></filter>`;
+        s.appendChild(defs);
+        const arcs = mk('g');
+        defs.appendChild(arcs);
+        const g = mk('g');
+        const labels = mk('g');
+        OPTS.forEach((_, i) => {
+            g.appendChild(mk('path', { d: wedge(i, 33, 49.5), fill: COLORS[i], 'fill-opacity': 0.1 }));
+            g.appendChild(mk('path', { d: wedge(i, 46, 49), fill: COLORS[i], filter: `url(#glow${id})` }));
+            const [x0, y0] = pt(i * SEG, 33), [x1, y1] = pt(i * SEG, 49.5);
+            g.appendChild(mk('line', { x1: x0, y1: y0, x2: x1, y2: y1, stroke: 'rgba(255,255,255,.16)', 'stroke-width': 0.35 }));
+        });
+        g.appendChild(labels);
+        const layLabels = (rot) => {
+            labels.replaceChildren();
+            arcs.replaceChildren();
+            OPTS.forEach((o, i) => {
+                if (!curved) { radialLabel(labels, i, 39.6, { fill: COLORS[i], 'font-size': 4.3, 'font-weight': 700, filter: `url(#glow${id})` }); return; }
+                const mid = ((((i + 0.5) * SEG + rot) % 360) + 360) % 360;
+                const bottom = mid > 90 && mid < 270;
+                const r = bottom ? 41.7 : 38.3;
+                const [ax, ay] = pt(i * SEG + 4, r), [bx, by] = pt((i + 1) * SEG - 4, r);
+                arcs.appendChild(mk('path', { id: `arc${id}${i}`, d: bottom ? `M${bx} ${by} A${r} ${r} 0 0 0 ${ax} ${ay}` : `M${ax} ${ay} A${r} ${r} 0 0 1 ${bx} ${by}` }));
+                const t = mk('text', { fill: COLORS[i], 'font-size': 4.4, 'font-weight': 700, 'letter-spacing': 0.5, filter: `url(#glow${id})` });
+                t.appendChild(mk('textPath', { href: `#arc${id}${i}`, startOffset: '50%', 'text-anchor': 'middle' }, o.toUpperCase()));
+                labels.appendChild(t);
+            });
+        };
+        layLabels(0);
+        s.appendChild(g);
+        // inner disc: a soft colored halo, a thin glowing ring, the pointer and the readout
+        const halo = mk('circle', { cx: 50, cy: 50, r: 24, fill: COLORS[0], opacity: 0.12, filter: `url(#soft${id})` });
+        const ring = mk('circle', { cx: 50, cy: 50, r: 32.4, fill: 'none', stroke: COLORS[0], 'stroke-width': 0.6, filter: `url(#glow${id})` });
+        const ptr = mk('path', { d: 'M50 32.6 L47.4 37 L52.6 37 Z', fill: '#fff', filter: `url(#glow${id})` });
+        const label = mk('text', { x: 50, y: 50, 'text-anchor': 'middle', 'dominant-baseline': 'middle', fill: COLORS[0], 'font-size': 9.5, 'font-weight': 300, filter: `url(#glow${id})` }, OPTS[0]);
+        const sub = mk('text', { x: 50, y: 59.5, 'text-anchor': 'middle', fill: '#8b93a3', 'font-size': 3.1, 'font-weight': 600, 'letter-spacing': 0.7 }, 'LUNCH');
+        s.append(halo, ring, ptr, label, sub);
+        const paint = (i) => { label.textContent = OPTS[i]; [label, ring].forEach((n) => n.setAttribute(n === ring ? 'stroke' : 'fill', COLORS[i])); halo.setAttribute('fill', COLORS[i]); };
+        paint(0);
+        let last = 0;
+        return {
+            node: s,
+            spin: spinner(g, (rot) => { last = rot; paint(under(rot)); sub.textContent = ''; halo.setAttribute('opacity', 0.12); },
+                (i) => {
+                    paint(i);
+                    sub.textContent = 'LUNCH';
+                    layLabels(last);
+                    // settle: the halo blooms once
+                    let k = 0;
+                    const bloom = () => { k += 0.05; halo.setAttribute('opacity', String(0.12 + 0.25 * Math.sin(Math.min(1, k) * Math.PI))); if (k < 1) requestAnimationFrame(bloom); };
+                    requestAnimationFrame(bloom);
+                }),
+        };
+    };
+
+    // ---------- E: monochrome with labels curved along the rim ----------
+    const styleE = () => {
+        const s = mk('svg', { viewBox: '0 0 100 100' });
+        const defs = mk('defs');
+        s.appendChild(defs);
+        const g = mk('g');
+        const labels = mk('g');
+        OPTS.forEach((_, i) => {
+            g.appendChild(mk('path', { d: wedge(i, 0, 50), fill: i % 2 ? '#141821' : '#1c2230' }));
+            const [x, y] = pt(i * SEG, 50);
+            g.appendChild(mk('line', { x1: 50, y1: 50, x2: x, y2: y, stroke: 'rgba(255,255,255,.12)', 'stroke-width': 0.3 }));
+            const [nx, ny] = pt((i + 0.5) * SEG, 20);
+            g.appendChild(mk('text', { x: nx, y: ny, 'text-anchor': 'middle', 'dominant-baseline': 'middle', fill: 'rgba(255,255,255,.25)', 'font-size': 3.5 }, String(i + 1)));
+        });
+        g.appendChild(labels);
+        // Labels follow the rim. Any segment that ends up in the bottom half runs its arc the
+        // other way so the text reads upright; this is redone whenever the wheel stops.
+        const layLabels = (rot) => {
+            defs.replaceChildren();
+            labels.replaceChildren();
+            OPTS.forEach((o, i) => {
+                const mid = ((((i + 0.5) * SEG + rot) % 360) + 360) % 360;
+                const bottom = mid > 90 && mid < 270;
+                const r = bottom ? 44.6 : 40.4;
+                const [ax, ay] = pt(i * SEG + 4, r), [bx, by] = pt((i + 1) * SEG - 4, r);
+                defs.appendChild(mk('path', { id: `arcE${i}`, d: bottom ? `M${bx} ${by} A${r} ${r} 0 0 0 ${ax} ${ay}` : `M${ax} ${ay} A${r} ${r} 0 0 1 ${bx} ${by}` }));
+                const t = mk('text', { fill: '#f2f4f8', 'font-size': 5.2, 'font-weight': 600, 'letter-spacing': 0.5 });
+                t.appendChild(mk('textPath', { href: `#arcE${i}`, startOffset: '50%', 'text-anchor': 'middle' }, o.toUpperCase()));
+                labels.appendChild(t);
+            });
+        };
+        layLabels(0);
+        s.appendChild(g);
+        s.appendChild(mk('circle', { cx: 50, cy: 50, r: 49.4, fill: 'none', stroke: 'rgba(79,140,255,.5)', 'stroke-width': 0.6 }));
+        s.appendChild(mk('path', { d: 'M50 9 L47.5 1 L52.5 1 Z', fill: '#4f8cff' }));
+        const res = mk('text', { x: 50, y: 50.5, 'text-anchor': 'middle', 'dominant-baseline': 'middle', fill: '#fff', 'font-size': 6, 'font-weight': 300 }, '');
+        s.appendChild(res);
+        let last = 0;
+        return { node: s, spin: spinner(g, (rot) => { res.textContent = ''; last = rot; }, (i) => { res.textContent = OPTS[i]; layLabels(last); }) };
+    };
+
+    const cards = [
+        ['F1. B + D: neon rim, live readout', 'D\'s layout in B\'s style: only the neon band spins; the middle flashes each option in its color as it passes, then settles and the halo blooms. Labels radial, as in D.', ['the result is the hero, and it matches the device\'s look'], ['radial labels read upside down at the bottom'], () => styleF(false), true],
+        ['F2. B + D with curved labels', 'The same, with E\'s rim labels that turn upright when the wheel stops.', ['every label readable at rest'], ['curved text gets tight for long options'], () => styleF(true), false],
+        ['A. Full-bleed classic', 'Today\'s colors, scaled to the whole screen, pointer at 12, the result in the hub.', ['familiar, readable'], ['labels upside down at the bottom'], styleA, false],
+        ['B. Neon', 'Dark segments with glowing rim bands and glowing labels; the result takes its segment\'s color. Matches the rest of the device.', ['fits the device\'s look', 'calm until it spins'], ['less color, so segments read by their rim'], styleB, false],
+        ['C. Carnival', 'Red and cream, chasing rim lights, gold pegs, and a flapper that kicks at every peg it passes.', ['the most fun; the flapper sells the spin'], ['clashes with the rest of the UI', 'busiest to look at'], styleC, false],
+        ['D. Rim wheel, live readout', 'Only the outer band spins; the middle shows what\'s under the pointer as it flies past, then settles big and centered.', ['the result is the hero', 'never upside-down text in the middle'], ['small labels on the rim'], styleD, false],
+        ['E. Curved labels', 'Monochrome segments, labels set along the rim, a blue pointer and hairline edge.', ['typographic, most elegant', 'labels turn upright when the wheel stops'], ['less playful', 'long labels get tight'], styleE, false],
+    ];
+    const grid = document.getElementById('grid');
+    cards.forEach(([title, desc, pros, cons, make, rec]) => {
+        const c = el('div', 'card');
+        const dev = el('div', 'device');
+        const scr = el('div', 'screen');
+        const w = make();
+        scr.appendChild(w.node);
+        dev.appendChild(scr);
+        dev.addEventListener('click', w.spin);
+        c.appendChild(dev);
+        c.appendChild(el('div', 'hint', 'Click to spin'));
+        if (rec) c.appendChild(el('div', 'rec', 'Recommended'));
+        c.appendChild(el('h2', '', title));
+        c.appendChild(el('p', '', desc));
+        const ul = el('ul');
+        pros.forEach((t) => ul.appendChild(el('li', '', `<b>Good:</b> ${t}`)));
+        cons.forEach((t) => ul.appendChild(el('li', '', `<b>Cost:</b> ${t}`)));
+        c.appendChild(ul);
+        grid.appendChild(c);
+    });
+})();
+</script>
+</body>
+</html>

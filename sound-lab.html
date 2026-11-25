@@ -1,0 +1,1507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk Buddy Sound Lab</title>
+<style>
+  :root {
+    --page: #eef0f3;
+    --text: #1d2330;
+    --muted: #667085;
+    --panel: #ffffff;
+    --border: #d9dde5;
+    --field: #f6f7f9;
+    --accent: #4f8cff;
+    --accent-ink: #ffffff;
+    --warn: #c77700;
+    --bad: #d64545;
+    --ok: #1f9d5c;
+    --roll-bg: #0b0d11;
+    --roll-grid: #262b35;
+    --roll-label: #8b93a3;
+    --roll-band: rgba(79, 140, 255, 0.08);
+    --roll-res: rgba(63, 207, 127, 0.35);
+    --roll-note: #4f8cff;
+    --roll-sel: #f5b942;
+    --roll-head: #ff6b6b;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #101216;
+      --text: #e6e9ef;
+      --muted: #98a2b3;
+      --panel: #181b21;
+      --border: #2c313b;
+      --field: #20242c;
+      --warn: #f5b942;
+      --bad: #ff6b6b;
+      --ok: #3fcf7f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #101216;
+    --text: #e6e9ef;
+    --muted: #98a2b3;
+    --panel: #181b21;
+    --border: #2c313b;
+    --field: #20242c;
+    --warn: #f5b942;
+    --bad: #ff6b6b;
+    --ok: #3fcf7f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header { padding: 18px 20px 6px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  header { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px 24px; flex-wrap: wrap; }
+  header .bar { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .layout {
+    display: grid; gap: 16px; padding: 12px 20px 40px;
+    grid-template-columns: 360px minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 40px; } header .bar { align-items: flex-start; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .card + .card { margin-top: 16px; }
+  .card h2 { margin: 0 0 10px; font-size: 14px; }
+  .card h3 { margin: 14px 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  button, select, input {
+    font: inherit; color: inherit; background: var(--field);
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 9px;
+  }
+  button { cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.small { padding: 2px 7px; font-size: 12px; }
+  input[type=number] { width: 78px; font-family: var(--mono); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row + .row { margin-top: 8px; }
+  .muted { color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: var(--field); }
+  .seg button + button { border-left: 1px solid var(--border); }
+  .seg button.on { background: var(--accent); color: var(--accent-ink); }
+  #search { width: 100%; margin-top: 10px; }
+  #name { font-size: 16px; font-weight: 600; width: 100%; max-width: 340px; }
+  .banner { margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .banner b { color: var(--text); font-weight: 600; }
+  .roll-wrap { margin-top: 12px; border-radius: 10px; overflow: hidden; background: var(--roll-bg); }
+  canvas { display: block; width: 100%; height: 240px; touch-action: none; cursor: crosshair; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px; }
+  td { padding: 3px 4px; border-top: 1px solid var(--border); vertical-align: middle; }
+  tr.sel td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .note { font-family: var(--mono); font-size: 12px; color: var(--muted); min-width: 52px; display: inline-block; }
+  .tag { font-size: 11px; padding: 1px 6px; border-radius: 6px; border: 1px solid currentColor; white-space: nowrap; }
+  .tag.warn { color: var(--warn); }
+  .tag.bad { color: var(--bad); }
+  .steps-scroll { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+  ul.limits { margin: 0; padding-left: 18px; }
+  ul.limits li + li { margin-top: 4px; }
+  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 12px; width: min(760px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+  dialog textarea { width: 100%; height: 50vh; font: 12px/1.4 var(--mono); background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--page); padding: 8px 14px; border-radius: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: calc(100vw - 32px); }
+  #toast.show { opacity: 1; }
+  .stat { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  /* Your sounds */
+  .egrp { font-size: 12px; color: var(--muted); font-weight: 600; margin: 14px 0 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .egrp:first-child { margin-top: 0; }
+  .erow { display: grid; grid-template-columns: 1fr auto 30px; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+  .erow:hover { background: var(--field); }
+  .erow.sel { background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .erow .lb { font-size: 13px; }
+  .erow .cur { font-size: 12px; color: var(--muted); text-align: right; }
+  .erow .cur.changed { color: var(--accent); }
+  .erow button { padding: 2px 0; }
+  /* Choices */
+  .choice-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+  .sticky { position: sticky; top: 0; z-index: 2; background: var(--panel); padding: 12px 0 8px; margin: 0 -2px; }
+  .mini { margin: 0 0 8px; border-radius: 10px; overflow: hidden; background: var(--roll-bg); }
+  .mini-head { display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px 0; color: #e6e9ef; font-size: 13px; font-weight: 600; }
+  .mini-head .stat { color: var(--roll-label); font-weight: 400; }
+  #mini { height: 110px; cursor: default; }
+  #search { margin-bottom: 4px; }
+  .cgrp { font-size: 12px; color: var(--muted); font-weight: 600; margin: 16px 0 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .crow { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 8px; }
+  .crow + .crow { border-top: 1px solid var(--border); }
+  .crow.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .crow .nm { font-size: 13px; font-weight: 600; }
+  .crow .nm i { font-style: normal; font-weight: 400; font-size: 10.5px; padding: 0 5px; margin-left: 6px; border-radius: 5px; border: 1px solid currentColor; opacity: 0.7; }
+  .crow .ds { font-size: 12px; color: var(--muted); }
+  .crow button { padding: 2px 0; }
+  .crow .use { padding: 2px 10px; }
+  .crow .inuse { font-size: 12px; color: var(--accent); font-weight: 600; padding: 0 6px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 8px; }
+  details { margin-top: 14px; font-size: 13px; }
+  details summary { cursor: pointer; color: var(--muted); }
+  details ul { margin-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Desk Buddy sound lab</h1>
+    <p>Choose the sound for each thing your desk buddy does: a suggestion, anything in the library, or one you make.</p>
+  </div>
+  <div class="bar">
+    <div class="row"><span class="muted">Volume</span>
+      <div class="seg" id="volSeg"><button data-v="low">Low</button><button data-v="med">Medium</button><button data-v="high">High</button></div>
+    </div>
+    <div class="row"><span class="muted">Play on</span>
+      <div class="seg" id="outSeg"><button data-v="laptop">This computer</button><button data-v="device">Desk buddy</button></div>
+      <button id="devConnect" class="small">Connect</button>
+      <span class="muted" id="devStatus">Not connected</span>
+    </div>
+    <div class="row" id="devSync" hidden>
+      <button id="devGet" class="small">Get from desk buddy</button>
+      <button id="devPut" class="small primary">Send to desk buddy</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <section class="card">
+    <h2>Your sounds</h2>
+    <p class="hint" style="margin-top:0">What plays today. Pick one to change it. With the desk buddy connected (USB, Chrome or Edge), <b>Get</b> loads its sounds here and <b>Send</b> puts these on it.</p>
+    <div id="events"></div>
+    <div class="row" style="margin-top:12px"><button id="resetAll" class="small">Reset all to defaults</button></div>
+  </section>
+
+  <section>
+    <div class="card" id="choiceCard">
+      <div class="choice-head">
+        <div><h2 id="choiceTitle" style="margin:0"></h2><div class="hint" id="choiceWhy"></div></div>
+        <div class="row"><button id="createNew" class="small primary">Create a new sound</button><button id="editCopy" class="small">Edit a copy</button></div>
+      </div>
+      <div class="sticky">
+        <div class="mini">
+          <div class="mini-head"><span id="miniName"></span><span class="stat" id="miniLen"></span></div>
+          <canvas id="mini"></canvas>
+        </div>
+        <input id="search" type="search" placeholder="Search every sound" aria-label="Search every sound">
+      </div>
+      <div id="choices"></div>
+    </div>
+
+    <div class="card" id="editorCard" hidden>
+      <div class="row">
+        <input id="name" aria-label="Sound name">
+        <span class="stat" id="stat"></span>
+        <span style="flex:1"></span>
+        <button id="useThis" class="small primary"></button>
+        <button id="delSound" class="small">Delete</button>
+        <button id="closeEditor" class="small">Close</button>
+      </div>
+      <div class="banner" id="banner"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="play" class="primary">Play</button>
+        <button id="stop">Stop</button>
+        <label class="row" style="gap:4px"><input type="checkbox" id="loop" style="width:auto"> Loop</label>
+        <span class="muted">Repeat</span>
+        <input type="number" id="repeat" min="1" max="20" step="1" style="width:56px">
+        <span class="muted">times, gap</span>
+        <input type="number" id="gap" min="0" max="5000" step="10" style="width:70px">
+        <span class="muted">ms</span>
+      </div>
+      <div class="roll-wrap"><canvas id="roll"></canvas></div>
+      <div class="hint">Click a note to hear it. Drag up or down to change pitch (snaps to notes; hold Shift for free pitch). Drag a note's right edge to change its length. Double-click empty space to add a note. Space plays or stops. Green line: the buzzer's loudest pitch (~2.3 kHz). Shaded band: 1 to 5 kHz, where it sounds best.</div>
+
+      <h3>Steps</h3>
+      <div class="row">
+        <button class="small" data-add="tone">+ Tone</button>
+        <button class="small" data-add="slide">+ Slide</button>
+        <button class="small" data-add="rest">+ Rest</button>
+        <button class="small" data-add="tick">+ Tick</button>
+      </div>
+      <div class="steps-scroll">
+        <table>
+          <thead><tr><th>#</th><th>Type</th><th>Pitch (Hz)</th><th>Slide to (Hz)</th><th>Length (ms)</th><th></th><th></th></tr></thead>
+          <tbody id="steps"></tbody>
+        </table>
+      </div>
+
+      <h3>Shape the whole sound</h3>
+      <div class="row">
+        <span class="muted">Transpose</span>
+        <button class="small" data-tr="-12">-octave</button>
+        <button class="small" data-tr="-1">-1 note</button>
+        <button class="small" data-tr="1">+1 note</button>
+        <button class="small" data-tr="12">+octave</button>
+      </div>
+      <div class="row">
+        <span class="muted">Speed</span>
+        <button class="small" data-sp="1.25">Slower</button>
+        <button class="small" data-sp="0.8">Faster</button>
+        <button class="small" id="reverse">Reverse</button>
+      </div>
+      <div class="row">
+        <span class="muted">Combine</span>
+        <select id="appendSel"></select>
+        <button class="small" id="appendBtn">Append to end</button>
+      </div>
+      <details>
+        <summary>What the buzzer can do</summary>
+        <ul class="limits">
+          <li>One tone at a time. No chords; very fast note runs fake one.</li>
+          <li>Instant on and off. No real fades; thinning pulses fake one.</li>
+          <li>No true noise, but fast random pitches get close (see Explosion, Static).</li>
+          <li>Volume is a device setting, not per sound. Sounds marked <i>soft</i> play one step quieter.</li>
+          <li>Best from 1 to 5 kHz, loudest near 2.3 kHz. Below 450 Hz it's thin; above 6 kHz it gets piercing.</li>
+          <li>This computer's speakers color the sound. Connect the desk buddy to hear the real thing.</li>
+        </ul>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Save and share</h2>
+      <div class="row">
+        <button id="exportJson" class="small">Download backup</button>
+        <button id="importJson" class="small">Import backup</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <button id="exportC" class="small">Firmware code</button>
+      </div>
+      <p class="hint">Your choices and sounds save in this browser. A backup file keeps them safe or moves them to another computer. Firmware code is for building them into the firmware (<code>sounds.h</code>).</p>
+    </div>
+  </section>
+</div>
+
+<dialog id="codeDlg">
+  <h2 style="margin-top:0">Firmware code</h2>
+  <p class="muted" style="margin-top:0">My sounds plus every starter an event uses, and the event map, ready for <code>sounds.h</code>. Copied to the clipboard.</p>
+  <textarea id="codeOut" readonly></textarea>
+  <div class="row" style="justify-content:flex-end;margin-top:10px"><button id="copyCode">Copy again</button><button id="closeCode" class="primary">Close</button></div>
+</dialog>
+<div id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+  const KEY = "desk_buddy.sounds.v1";
+  const FMIN = 150, FMAX = 10000;          // editor clamp
+  const DMIN = 200, DMAX = 8000;           // piano-roll display range
+  const MS_MIN = 1, MS_MAX = 3000;
+  const DUTY = { low: 0.05, med: 0.15, high: 0.5, soft: 0.02 };
+  // A soft sound plays one volume step down (High -> Med, Med -> Low, Low -> a 2% duty).
+  const volFor = (sound) => !sound || !sound.soft ? state.sim.vol : ({ high: "med", med: "low", low: "soft" }[state.sim.vol] || state.sim.vol);
+  const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+  // ---------- helpers for writing sounds ----------
+  const T = (f, ms) => ({ kind: "tone", f0: f, f1: f, ms });
+  const S = (a, b, ms) => ({ kind: "slide", f0: a, f1: b, ms });
+  const R = (ms) => ({ kind: "rest", f0: 0, f1: 0, ms });
+  const times = (n, arr) => Array.from({ length: n }, () => arr.map(s => ({ ...s }))).flat();
+  // Note name to Hz: "C7", "Ds6" (sharp), "Bb6" (flat).
+  function hz(name) {
+    const m = /^([A-G])(s|b)?(\d)$/.exec(name);
+    if (!m) throw new Error("bad note " + name);
+    const base = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]] + (m[2] === "s" ? 1 : m[2] === "b" ? -1 : 0);
+    const midi = (+m[3] + 1) * 12 + base;
+    return Math.round(440 * Math.pow(2, (midi - 69) / 12));
+  }
+  // Melody from a string: "E7 E7 F7:2 - G7:.5" (note[:beats], "-" or "-:beats" is a rest).
+  // Each note is a beep with a short gap after it (appliance style).
+  function tune(beatMs, str, gapMs = 20) {
+    const out = [];
+    str.trim().split(/\s+/).forEach(tok => {
+      const [n, b] = tok.split(":");
+      const ms = Math.round(beatMs * (b ? parseFloat(b) : 1));
+      if (n === "-") out.push(R(ms));
+      else if (gapMs > 0) out.push(T(hz(n), Math.max(10, ms - gapMs)), R(gapMs));
+      else out.push(T(hz(n), ms));
+    });
+    if (out.length && out[out.length - 1].kind === "rest" && gapMs > 0) out.pop();
+    return out;
+  }
+  // Deterministic pseudo-random, so generated starters never change between loads.
+  function rng(seed) { let x = seed >>> 0; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); }
+  function noise(seed, n, ms, lo, hi, fall) {
+    const r = rng(seed), out = [];
+    for (let i = 0; i < n; i++) {
+      const k = fall ? 1 - (i / n) * 0.7 : 1;
+      out.push(T(Math.round((lo + r() * (hi - lo)) * k), ms));
+    }
+    return out;
+  }
+  function morse(text, unit = 60, f = 2300) {
+    const code = { A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.", G: "--.", H: "....", I: "..", J: ".---", K: "-.-", L: ".-..", M: "--",
+      N: "-.", O: "---", P: ".--.", Q: "--.-", R: ".-.", S: "...", T: "-", U: "..-", V: "...-", W: ".--", X: "-..-", Y: "-.--", Z: "--.." };
+    const out = [];
+    text.toUpperCase().split("").forEach((ch, ci) => {
+      if (ch === " ") { out.push(R(unit * 4)); return; }
+      (code[ch] || "").split("").forEach((sym, si) => {
+        if (si > 0) out.push(R(unit));
+        out.push(T(f, sym === "." ? unit : unit * 3));
+      });
+      if (ci < text.length - 1 && text[ci + 1] !== " ") out.push(R(unit * 3));
+    });
+    return out;
+  }
+  const C = (cat, id, name, desc, steps, repeat = 1, gap = 0) => ({ cat, id, name, desc, steps, repeat, gap });
+  const Soft = (s) => ({ ...s, soft: true });  // plays one volume step below the device setting
+
+  // ---------- starter catalog (built in, read-only; editing makes a copy in My sounds) ----------
+  // Fake decay: the buzzer can't fade, so a held note is followed by thinning pulses.
+  const fade = (f) => [R(40), T(f, 120), R(80), T(f, 50), R(140), T(f, 15)];
+  const CATALOG = [
+    // Signature startup (originals, candidates for the device's own boot sound)
+    C("Signature startup", "p_sig_bloom", "Sunrise bloom", "Original. A glide up like the sun on Home, a sparkle, then a warm held note that fades.",
+      [S(1175, 2093, 180), R(20), T(2637, 60), T(3136, 60), T(2637, 380), ...fade(2637)]),
+    C("Signature startup", "p_sig_hello", "Open fifths hello", "Original. Da-da-DUM on open fifths: bold and simple, easy to recognize.",
+      [T(1568, 110), R(30), T(2349, 90), R(10), T(3136, 450), ...fade(3136)]),
+    C("Signature startup", "p_sig_spin", "Knob spin-up", "Original. Ticks speed up like the knob spinning, then a quick run and a bright landing.",
+      [...[120, 90, 70, 55, 45, 35, 28, 22].flatMap(g => [T(3000, 2), R(g)]), ...tune(35, "C7 E7 G7", 0), T(4186, 300), ...fade(4186)]),
+
+    // Timers and alerts
+    C("Timers and alerts", "p_chime", "Chime up", "Timer finished. Three notes up, repeated.", [T(1319, 90), R(25), T(1568, 90), R(25), T(2093, 240)], 3, 700),
+    C("Timers and alerts", "p_dingdong", "Ding dong", "Focus ended, or a doorbell-style alert.", [T(2349, 260), R(40), T(1760, 420)]),
+    C("Timers and alerts", "p_warble", "Warble alarm", "Urgent but not harsh.", times(5, [T(2093, 45), T(2637, 45)]), 3, 500),
+    C("Timers and alerts", "p_kitchen", "Kitchen timer", "Fast beeps in bursts.", times(4, [T(2800, 60), R(60)]), 4, 500),
+    C("Timers and alerts", "p_microwave", "Microwave done", "Three long flat beeps.", [T(2000, 400), R(250), T(2000, 400), R(250), T(2000, 400)]),
+    C("Timers and alerts", "p_triple", "Triple beep", "Short, clear attention grab.", tune(120, "A7 A7 A7", 50)),
+    C("Timers and alerts", "p_gentlewake", "Gentle wake", "Slow and soft; good for long timers.", tune(220, "C7 E7 G7 C7 E7 G7 A7:2"), 2, 1500),
+    C("Timers and alerts", "p_rising", "Rising alert", "A scale climbing up.", tune(90, "C7 D7 E7 F7 G7 A7 B7 C8:2", 15)),
+    C("Timers and alerts", "p_321", "3, 2, 1, go", "Countdown into a start.", [T(1760, 120), R(880), T(1760, 120), R(880), T(1760, 120), R(880), T(3520, 400)]),
+    C("Timers and alerts", "p_last10", "Last seconds tick", "One tick a second for ten seconds.", [T(3000, 8)], 10, 992),
+    C("Timers and alerts", "p_bellring", "Bell ring", "Fast trill like an old bell.", times(30, [T(2600, 10), T(2900, 10)]), 2, 300),
+    C("Timers and alerts", "p_knock", "Soft knock", "Two quiet taps.", [T(1200, 12), R(110), T(1200, 12)]),
+    C("Timers and alerts", "p_halfway", "Halfway there", "Two notes, middle of a timer.", tune(140, "E7 E7")),
+
+    // Focus and calm
+    C("Focus and calm", "p_focus_start", "Focus start", "One smooth rise.", [S(1568, 2349, 180)]),
+    C("Focus and calm", "p_focus_end", "Focus end", "Three notes down to rest.", tune(160, "G7 E7 C7:2")),
+    C("Focus and calm", "p_break_over", "Break over", "Back to work.", tune(110, "C7 G7 C7 G7:2")),
+    C("Focus and calm", "p_breathe_in", "Breathe in", "Two-second rise for Breathe.", [S(1047, 2093, 2000)]),
+    C("Focus and calm", "p_breathe_out", "Breathe out", "Two-second fall for Breathe.", [S(2093, 1047, 2000)]),
+    C("Focus and calm", "p_bellfade", "Bell with fake fade", "The buzzer can't fade, so the pulses thin out instead.",
+      [T(2300, 300), R(40), T(2300, 120), R(80), T(2300, 60), R(140), T(2300, 25), R(200), T(2300, 8)]),
+    C("Focus and calm", "p_sunrise", "Sunrise", "Slow pentatonic climb.", tune(260, "C7 D7 E7 G7 A7:3")),
+    C("Focus and calm", "p_nudge", "Gentle nudge", "Barely there.", [T(1760, 60), R(140), T(2093, 90)]),
+    C("Focus and calm", "p_check", "Check", "Done or confirmed.", [T(2093, 40), R(15), T(3136, 90)]),
+
+    // Reminders
+    C("Reminders", "p_water", "Water drop", "Drink some water.", [S(3200, 1200, 40)], 2, 350),
+    C("Reminders", "p_stand", "Stand up", "Time to stretch.", tune(100, "C7 E7 G7 C8")),
+    C("Reminders", "p_eyes", "Look away", "Eye break, 20-20-20.", [T(2093, 40), R(60), T(2093, 40)]),
+    C("Reminders", "p_tap", "Tap on the shoulder", "Two light taps, a pause, two more.", [T(2600, 15), R(90), T(2600, 15), R(400), T(2600, 15), R(90), T(2600, 15)]),
+
+    // Controls and UI
+    C("Controls and UI", "p_tick", "Tick", "Knob turn.", [T(3500, 2)]),
+    C("Controls and UI", "p_softtick", "Soft tick", "Quieter knob turn.", [T(2300, 1)]),
+    C("Controls and UI", "p_dtick", "Double tick", "Knob detent with a bit more body.", [T(3500, 2), R(30), T(3500, 2)]),
+    C("Controls and UI", "p_keytype", "Letter typed", "Text entry ring.", [T(4000, 1)]),
+    C("Controls and UI", "p_press", "Press", "Knob press.", [T(2093, 14)]),
+    C("Controls and UI", "p_longpress", "Long press", "Press, then a drop as it registers.", [T(2093, 14), R(120), S(2093, 1047, 80)]),
+    C("Controls and UI", "p_back", "Back", "Leaving a screen.", [S(2349, 1568, 60)]),
+    C("Controls and UI", "p_swipe", "Swipe whoosh", "Panel swipe forward.", [S(1800, 3600, 35)]),
+    C("Controls and UI", "p_swipeback", "Swipe back", "Panel swipe backward.", [S(3600, 1800, 35)]),
+    C("Controls and UI", "p_trayopen", "Tray open", "Fast travel tray down.", [S(1500, 2500, 60)]),
+    C("Controls and UI", "p_trayclose", "Tray close", "Fast travel tray up.", [S(2500, 1500, 60)]),
+    C("Controls and UI", "p_toggleon", "Toggle on", "Low then high.", [T(1568, 30), R(10), T(3136, 40)]),
+    C("Controls and UI", "p_toggleoff", "Toggle off", "High then low.", [T(3136, 30), R(10), T(1568, 40)]),
+    C("Controls and UI", "p_bump", "Edge bump", "End of a list.", [T(900, 15)]),
+    C("Controls and UI", "p_saved", "Saved", "Setting stored.", [T(2637, 30), R(20), T(3520, 50)]),
+    C("Controls and UI", "p_success", "Success", "Short and happy.", tune(80, "C7 G7:2")),
+    C("Controls and UI", "p_nope", "Nope", "Not allowed.", [T(700, 90), R(40), T(700, 90)]),
+
+    // Games
+    C("Games", "p_hit", "Paddle hit", "Pong paddle.", [T(2637, 25)]),
+    C("Games", "p_wall", "Wall bounce", "Pong wall.", [T(1760, 18)]),
+    C("Games", "p_serve", "Serve", "Ball in play.", [T(2093, 40), R(40), T(2637, 40)]),
+    C("Games", "p_miss", "Miss", "Lost the ball.", [S(1400, 420, 320)]),
+    C("Games", "p_best", "New best", "High score.", [T(1568, 70), R(15), T(2093, 70), R(15), T(2637, 70), R(15), T(3136, 240)]),
+    C("Games", "p_go", "Go", "Reflex: press now.", [T(2349, 160)]),
+    C("Games", "p_dice", "Dice roll", "Clatter that slows down.", [T(2600, 6), R(40), T(3100, 6), R(55), T(2200, 6), R(70), T(2900, 6), R(95), T(2400, 6), R(130), T(2800, 8)]),
+    C("Games", "p_coin", "Coin flip", "Up and land.", [S(1500, 3200, 140), R(50), T(2637, 70)]),
+    C("Games", "p_levelup", "Level up", "Quick climb and a hold.", tune(60, "C7 E7 G7 C8 G7 C8:3", 10)),
+    C("Games", "p_gameover", "Game over", "Slow walk down.", tune(220, "G6 F6 E6 D6 C6:3")),
+    C("Games", "p_powerup", "Power-up", "Long sweep up.", [S(800, 3200, 300)]),
+    C("Games", "p_laser", "Laser", "Pew.", [S(4000, 900, 90)]),
+    C("Games", "p_jump", "Jump", "Boing-ish.", [S(1200, 2600, 90)]),
+    C("Games", "p_gem", "Gem pickup", "Bright two-step.", tune(40, "C7 G7 C8:4", 0)),
+    C("Games", "p_bonus", "Bonus", "Extra points.", tune(70, "G7 E7 G7 C8:2", 10)),
+    C("Games", "p_right", "Correct", "Right answer.", tune(90, "E7 C8:2")),
+    C("Games", "p_wrong", "Wrong", "Low and sad. Shows how thin the low end is.", [S(500, 350, 350)]),
+    C("Games", "p_draw", "Draw", "Tie game.", [T(2093, 150), R(60), T(2093, 150)]),
+    C("Games", "p_fanfare", "Fanfare", "You win.", tune(120, "G6 C7 E7 G7:2 E7 G7:3")),
+    C("Games", "p_boom", "Explosion", "Fake noise from fast random pitches.", noise(7, 60, 6, 400, 1800, true)),
+
+    // Fun and effects
+    C("Fun and effects", "p_siren", "Siren", "Slow up and down.", [S(1200, 2400, 500), S(2400, 1200, 500)], 2, 0),
+    C("Fun and effects", "p_yelp", "Yelp siren", "Fast rises.", times(4, [S(1200, 2800, 150)])),
+    C("Fun and effects", "p_robot", "Robot chatter", "Random little slides.", (() => { const r = rng(42), o = []; for (let i = 0; i < 12; i++) { const a = 1500 + r() * 2000, b = 1500 + r() * 2000; o.push(S(Math.round(a), Math.round(b), 40 + Math.round(r() * 40))); if (r() > 0.6) o.push(R(30)); } return o; })()),
+    C("Fun and effects", "p_bird", "Bird chirp", "Three quick tweets.", [S(2500, 4200, 40), R(40), S(2600, 4400, 40), R(150), S(3000, 4000, 60)]),
+    C("Fun and effects", "p_cricket", "Cricket", "Chirp trains.", times(3, [...times(6, [T(4200, 8), R(8)]), R(200)])),
+    C("Fun and effects", "p_typewriter", "Typewriter ding", "Clack, clack, clack, ding.", [T(4000, 1), R(80), T(4000, 1), R(80), T(4000, 1), R(200), T(3520, 500)]),
+    C("Fun and effects", "p_phonering", "Old phone ring", "Bell trill, pause, repeat.", times(20, [T(2400, 20), T(2900, 20)]), 2, 1000),
+    C("Fun and effects", "p_backup", "Truck backing up", "Beep, beep, beep.", [T(1100, 500)], 4, 500),
+    C("Fun and effects", "p_sos", "Morse: SOS", "... --- ...", morse("SOS")),
+    C("Fun and effects", "p_morsehi", "Morse: hi", ".... ..", morse("HI")),
+    C("Fun and effects", "p_sadtrombone", "Sad trombone", "Waa, waa, waa, waaaa.", [S(1568, 1480, 350), R(60), S(1480, 1397, 350), R(60), S(1397, 1319, 350), R(60), ...times(8, [S(1319, 1250, 60), S(1250, 1319, 60)])]),
+    C("Fun and effects", "p_tada", "Ta-da", "Presenting.", tune(110, "C7 G7:4", 30)),
+    C("Fun and effects", "p_drumroll", "Drum roll", "Fast low ticks into a hit.", [...times(40, [T(700, 3), R(22)]), T(1400, 40)]),
+    C("Fun and effects", "p_ticktock", "Clock tick-tock", "Two pitches, one second apart.", [T(3000, 3), R(497), T(2200, 3)], 3, 497),
+    C("Fun and effects", "p_warp", "Sci-fi warp", "Three sweeps.", times(3, [S(800, 3600, 200)])),
+    C("Fun and effects", "p_static", "Static", "Radio crackle.", noise(99, 50, 5, 1500, 6000, false)),
+    C("Fun and effects", "p_raspberry", "Raspberry", "Pbbbt. Low and buzzy on purpose.", times(30, [T(420, 8), T(380, 8)])),
+    C("Fun and effects", "p_chord", "Fake chord", "C major as a very fast arpeggio.", times(5, [T(2093, 18), T(2637, 18), T(3136, 18)])),
+    C("Fun and effects", "p_arp", "Sparkle", "Quick runs up.", times(3, tune(25, "C7 E7 G7 C8", 0))),
+
+    // Appliances
+    C("Appliances", "p_trout", "Washer: The Trout (Schubert)", "The melody Samsung washers play.", tune(150, "G6 C7 C7 E7 E7 C7 G6:2 G6 A6 G6 F6 E6 D6 C6:2")),
+    C("Appliances", "p_elise", "Garbage truck: Für Elise", "What Taiwan's garbage trucks play.", tune(130, "E7 Ds7 E7 Ds7 E7 B6 D7 C7 A6:3 - C6 E6 A6 B6:3 - E6 Gs6 B6 C7:3")),
+    C("Appliances", "p_cycle", "Washer: cycle done", "Original. Arpeggio with a bounce.", tune(120, "G6 C7 E7 G7 - E7 G7:3")),
+    C("Appliances", "p_dryer", "Dryer: all dry", "Original. Plays twice.", tune(140, "E7 D7 E7 G7 E7:2 C7:2 D7 G6 C7:4"), 2, 900),
+    C("Appliances", "p_waltz", "Washer: laundry waltz", "Original, in 3/4.", tune(170, "E7 G7 G7 D7 F7 F7 C7 E7 G7 A7:2 G7 F7 E7 D7 C7:3")),
+    C("Appliances", "p_dishwasher", "Dishwasher: sparkly clean", "Original. Bright and bouncy.", tune(110, "C7 E7 G7 E7 F7 A7 G7:2 E7 D7 G7 C7:3")),
+    C("Appliances", "p_fridge", "Fridge: door left open", "Original. Nagging double beep.", [T(3000, 80), R(80), T(3000, 80)], 4, 900),
+    C("Appliances", "p_rice", "Rice cooker: ready", "Original. Little sing-song.", tune(160, "G6 A6 C7 A6 C7:2 D7 C7:3")),
+    C("Appliances", "p_poweron", "Appliance: power on", "Quick run up.", tune(75, "C7 D7 E7 G7:2")),
+    C("Appliances", "p_poweroff", "Appliance: power off", "Quick run down.", tune(75, "G7 E7 D7 C7:2")),
+    C("Appliances", "p_button", "Appliance: button beep", "Single panel beep.", [T(2700, 70)]),
+    C("Appliances", "p_doorleft", "Appliance: door open alert", "Double beep, three times.", [T(2700, 120), R(80), T(2700, 120)], 3, 250),
+
+    // Melodies (public domain; written by ear, so a note may be off)
+    C("Melodies", "p_entertainer", "The Entertainer (Joplin)", "Opening phrase.", tune(140, "D6:.5 Ds6:.5 E6 C7 E6 C7 E6 C7:3 C7:.5 D7:.5 Ds7:.5 E7:.5 C7:.5 D7:.5 E7 B6 D7 C7:3")),
+    C("Melodies", "p_ode", "Ode to Joy (Beethoven)", "First line.", tune(220, "E7 E7 F7 G7 G7 F7 E7 D7 C7 C7 D7 E7 E7:1.5 D7:.5 D7:2")),
+    C("Melodies", "p_twinkle", "Twinkle Twinkle", "First line.", tune(250, "C7 C7 G7 G7 A7 A7 G7:2 F7 F7 E7 E7 D7 D7 C7:2")),
+    C("Melodies", "p_bday", "Happy Birthday", "Whole song.", tune(200, "G6:.75 G6:.25 A6 G6 C7 B6:2 G6:.75 G6:.25 A6 G6 D7 C7:2 G6:.75 G6:.25 G7 E7 C7 B6 A6:2 F7:.75 F7:.25 E7 C7 D7 C7:2")),
+    C("Melodies", "p_frere", "Frère Jacques", "Whole round, one voice.", tune(220, "C7 D7 E7 C7 C7 D7 E7 C7 E7 F7 G7:2 E7 F7 G7:2 G7:.5 A7:.5 G7:.5 F7:.5 E7 C7 G7:.5 A7:.5 G7:.5 F7:.5 E7 C7 C7 G6 C7:2 C7 G6 C7:2")),
+    C("Melodies", "p_westminster", "Westminster chimes", "Clock tower quarter chime.", tune(450, "E7 C7 D7 G6:2 G6 D7 E7 C7:2", 40)),
+    C("Melodies", "p_jingle", "Jingle Bells", "Chorus.", tune(180, "E7 E7 E7:2 E7 E7 E7:2 E7 G7 C7:1.5 D7:.5 E7:4 F7 F7 F7:1.5 F7:.5 F7 E7 E7 E7:.5 E7:.5 E7 D7 D7 E7 D7:2 G7:2")),
+    C("Melodies", "p_lullaby", "Brahms' Lullaby", "First line.", tune(230, "E6:.5 E6:.5 G6:2 E6:.5 E6:.5 G6:2 E6:.5 G6:.5 C7 B6:1.5 A6:.5 A6 G6 D6:.5 E6:.5 F6 D6 D6:.5 E6:.5 F6:2 D6:.5 F6:.5 B6 A6 G6 B6 C7:3")),
+    C("Melodies", "p_mountain", "Hall of the Mountain King (Grieg)", "The sneaky theme.", tune(160, "A6 B6 C7 D7 E7 C7 E7:2 Ds7 B6 Ds7:2 D7 Bb6 D7:2 A6 B6 C7 D7 E7 C7 E7 A7 G7 E7 C7 E7 G7:4")),
+    C("Melodies", "p_morning", "Morning Mood (Grieg)", "Opening.", tune(200, "G7 E7 D7 C7 D7 E7 G7 E7 D7 C7 D7:.5 E7:.5 D7:.5 E7:.5 G7 E7 G7 A7 E7 A7 G7 E7 D7 C7:3")),
+    C("Melodies", "p_mozart", "Eine kleine Nachtmusik (Mozart)", "Opening.", tune(200, "G6:1.5 D6:.5 G6:1.5 D6:.5 G6:.5 D6:.5 G6:.5 B6:.5 D7:2 C7:1.5 A6:.5 C7:1.5 A6:.5 C7:.5 A6:.5 Fs6:.5 A6:.5 D6:2")),
+    C("Melodies", "p_cancan", "Can-can (Offenbach)", "The kick line.", tune(150, "C7:2 D7:.5 F7:.5 E7:.5 D7:.5 G7 G7 G7:.5 A7:.5 E7:.5 F7:.5 D7 D7 D7:.5 F7:.5 E7:.5 D7:.5 C7:.5 C8:.5 B7:.5 A7:.5 G7:.5 F7:.5 E7:.5 D7:.5")),
+    C("Melodies", "p_tell", "William Tell gallop (Rossini)", "Da-da-dum.", tune(110, "C7:.5 C7:.5 C7 C7:.5 C7:.5 C7 C7:.5 C7:.5 F7 G7 A7 C7:.5 C7:.5 C7 C7:.5 C7:.5 F7 A7 G7 E7 C7")),
+    C("Melodies", "p_greensleeves", "Greensleeves", "First line.", tune(230, "A6 C7:2 D7 E7:1.5 F7:.5 E7 D7:2 B6 G6:1.5 A6:.5 B6 C7:2 A6 A6:1.5 Gs6:.5 A6 B6:2 Gs6 E6:2")),
+
+    // System
+    C("System", "p_wifi", "Connected", "Wi-Fi joined.", [S(1047, 2093, 160), R(30), T(2637, 90)]),
+    C("System", "p_disconnected", "Disconnected", "Wi-Fi lost.", [T(2637, 90), R(30), S(2093, 1047, 160)]),
+    C("System", "p_error", "Error (low, buzzy)", "Something failed.", [T(620, 130), R(40), T(440, 240)]),
+    C("System", "p_boot", "Simple startup", "Plain boot jingle.", tune(90, "C7 G6 C7 E7 G7:3", 15)),
+    C("System", "p_update", "Update done", "Firmware or weather refreshed.", tune(70, "E7 G7 E7 G7:2", 10)),
+
+    // Made for the desk buddy's events (EVENTS suggest lists). Soft ones play a volume step
+    // below the device setting.
+    Soft(C("Desk buddy", "q_tick_low", "Low tick", "Short and low: a felt detent more than a sound.", [T(1000, 2)])),
+    Soft(C("Desk buddy", "q_tick_felt", "Felt click", "Lower and a touch longer, like a muffled ratchet.", [T(700, 3)])),
+    Soft(C("Desk buddy", "q_tick_wood", "Wood tick", "Two tiny clicks, high then low, like a wooden detent.", [T(1400, 1), R(4), T(900, 1)])),
+    C("Desk buddy", "q_tick_now", "Bright chirp", "Higher and longer: easy to hear, less subtle.", [T(2300, 12)]),
+    Soft(C("Desk buddy", "q_press_thock", "Soft thock", "A low, round press.", [T(800, 8)])),
+    Soft(C("Desk buddy", "q_press_clack", "Click-clack", "Down and up, like a real switch.", [T(1300, 3), R(30), T(900, 4)])),
+    C("Desk buddy", "q_press_firm", "Firm click", "Crisper, a step louder than the ticks.", [T(1600, 6)]),
+    Soft(C("Desk buddy", "q_press_bloop", "Low bloop", "A quick drop in pitch.", [S(1200, 700, 18)])),
+    Soft(C("Desk buddy", "q_back_drop", "Drop", "A short slide down: leaving.", [S(1300, 800, 40)])),
+    Soft(C("Desk buddy", "q_back_step", "Two steps down", "Two clicks, the second lower.", [T(1400, 4), R(25), T(950, 6)])),
+    C("Desk buddy", "q_home_chime", "Home chime", "Two notes down to rest.", [T(1568, 60), R(20), T(1047, 120)]),
+    C("Desk buddy", "q_home_swoop", "Swoop home", "One smooth slide down.", [S(2093, 1047, 120)]),
+    Soft(C("Desk buddy", "q_key_type", "Typewriter tap", "A tiny high tick per letter.", [T(4000, 1)])),
+    Soft(C("Desk buddy", "q_key_soft", "Soft tap", "Rounder and lower.", [T(1800, 2)])),
+    Soft(C("Desk buddy", "q_key_pebble", "Pebble", "Two tiny clicks, like a pebble on glass.", [T(2600, 1), R(3), T(2000, 1)])),
+    Soft(C("Desk buddy", "q_del_low", "Low tap", "Lower than a letter, so deleting sounds different.", [T(1200, 2)])),
+    Soft(C("Desk buddy", "q_del_down", "Tap down", "A letter tap that drops.", [S(1800, 1100, 6)])),
+    Soft(C("Desk buddy", "q_tog_on", "Click on", "Soft click, higher.", [T(1400, 4)])),
+    Soft(C("Desk buddy", "q_tog_off", "Click off", "Soft click, lower.", [T(1000, 4)])),
+    Soft(C("Desk buddy", "q_bump_low", "Low bump", "End of a list: a short low knock.", [T(600, 6)])),
+    Soft(C("Desk buddy", "q_bump", "Edge bump", "A little longer and higher.", [T(900, 15)])),
+    C("Desk buddy", "q_timer_bells", "Three bells", "Original. Three notes up with a fading tail, twice.", [...tune(110, "E7 G7", 10), T(4186, 260), ...fade(4186)], 2, 600),
+    C("Desk buddy", "q_focus_two", "Two up", "Starting: two quick notes up.", [T(1568, 50), R(20), T(2093, 80)]),
+    Soft(C("Desk buddy", "q_breathe_in", "Soft in", "A short soft tone when it's time to breathe in.", [T(1200, 40)])),
+    Soft(C("Desk buddy", "q_breathe_out", "Soft out", "Lower, for breathing out.", [T(900, 40)])),
+    Soft(C("Desk buddy", "q_breathe_in_s", "Rise", "A quiet half-second rise.", [S(900, 1300, 500)])),
+    Soft(C("Desk buddy", "q_breathe_out_s", "Fall", "A quiet half-second fall.", [S(1300, 900, 500)])),
+    C("Desk buddy", "q_pong_pop", "Pop", "Shorter and lower than the paddle hit.", [T(1760, 10)]),
+    C("Desk buddy", "q_pong_rally", "Rally climb", "Like Paddle hit, but the firmware raises the pitch a little each hit in a rally (this plays hits 1, 5 and 10).", [T(2093, 22), R(250), T(2400, 22), R(250), T(2800, 22)]),
+    C("Desk buddy", "q_wall_thud", "Thud", "A low knock.", [T(900, 12)]),
+    C("Desk buddy", "q_wall_tick", "Tick", "Barely there, high.", [T(3000, 3)]),
+    C("Desk buddy", "q_miss_wahwah", "Wah-wah", "Two slides down.", [S(1400, 1000, 180), R(50), S(1000, 600, 300)]),
+    C("Desk buddy", "q_go_sharp", "Sharp beep", "Higher and shorter: as instant as it gets.", [T(3136, 80)]),
+    C("Desk buddy", "q_go_double", "Double", "Two fast beeps.", [T(2637, 40), R(20), T(2637, 40)]),
+    C("Desk buddy", "q_result_speed", "Speed chirp", "The firmware picks the pitch from the time: faster is higher (this plays slow, medium, fast).", [T(1568, 60), R(300), T(2349, 60), R(300), T(3136, 60)]),
+    C("Desk buddy", "q_dice_rattle", "Rattle", "Fast random ticks, then the land.", [...noise(17, 14, 4, 2000, 4000, false).flatMap(t => [t, R(18)]), R(60), T(2200, 12)]),
+    C("Desk buddy", "q_dice_tumble", "Tumble", "Slower, heavier clatter.", [T(1800, 8), R(70), T(1500, 8), R(95), T(2000, 8), R(130), T(1600, 8), R(180), T(1900, 14)]),
+    C("Desk buddy", "q_coin_spin", "Spinning coin", "A fast shimmer, then it lands.", [...times(10, [T(3000, 8), T(3500, 8)]), R(60), T(2637, 60)]),
+    C("Desk buddy", "q_coin_ping", "Ping", "Flick up, a beat, a bright land.", [S(2000, 4000, 80), R(300), T(3136, 40)]),
+    C("Desk buddy", "q_boot_sweep", "Sun ring sweep", "Original. Climbs a major chord and lands on a bright fading note.", [...tune(70, "C7 E7 G7", 8), S(3136, 4186, 90), T(4186, 280), ...fade(4186)]),
+    C("Desk buddy", "q_boot_hello", "Hel-lo", "Original. Two notes like saying hello, then a sparkle.", [T(1568, 90), R(25), S(1568, 2093, 60), T(2093, 200), R(40), T(3136, 30), T(3520, 30), T(4186, 180), ...fade(4186)]),
+  ];
+  const CATS = [...new Set(CATALOG.map(s => s.cat))];
+
+  // Every event the device plays a sound for, in the order the lab and the device list them.
+  // def: the device default. suggest: the options offered first (null = no sound); the device's
+  // own Settings > Sound > Sounds offers these too. The firmware's sound table is generated from
+  // this list by firmware/desk_buddy/tools/gen_sounds.js.
+  const EVENTS = [
+    { group: "Knob and typing", id: "knob_tick", label: "Knob turn", why: "Every detent. Felt more than heard.", def: "q_tick_low", suggest: ["q_tick_low", "q_tick_felt", "q_tick_wood", "q_tick_now"] },
+    { group: "Knob and typing", id: "knob_press", label: "Knob press", why: "Pressing the knob to choose.", def: "q_press_thock", suggest: ["q_press_thock", "q_press_clack", "q_press_firm", "q_press_bloop"] },
+    { group: "Knob and typing", id: "back", label: "Hold to go back", why: "The short hold that backs out of a screen.", def: null, suggest: [null, "q_back_drop", "q_back_step"] },
+    { group: "Knob and typing", id: "home", label: "Hold to go Home", why: "The 3-second hold that jumps to Home.", def: null, suggest: [null, "q_home_chime", "q_home_swoop"] },
+    { group: "Knob and typing", id: "key_type", label: "Letter typed", why: "Each letter on the ring keyboard.", def: "q_key_soft", suggest: ["q_key_soft", "q_key_type", "q_key_pebble", null] },
+    { group: "Knob and typing", id: "key_delete", label: "Letter deleted", why: "The delete key.", def: "q_del_down", suggest: ["q_del_down", "q_del_low", null] },
+    { group: "Timers and focus", id: "timer_done", label: "Timer finished", why: "A timer reaching zero. Has to be noticed.", def: "q_timer_bells", suggest: ["q_timer_bells", "p_chime", "p_gentlewake", "p_dingdong"] },
+    { group: "Timers and focus", id: "focus_start", label: "Focus started", why: "Starting a focus session.", def: null, suggest: [null, "p_focus_start", "q_focus_two"] },
+    { group: "Timers and focus", id: "focus_done", label: "Focus finished", why: "The end of a focus session.", def: "p_focus_end", suggest: ["p_focus_end", "p_bellfade", "p_dingdong"] },
+    { group: "Timers and focus", id: "breathe_in", label: "Breathe in", why: "Breathe: each switch to breathing in.", def: "q_breathe_in", suggest: ["q_breathe_in", "q_breathe_in_s", null] },
+    { group: "Timers and focus", id: "breathe_out", label: "Breathe out", why: "Breathe: each switch to breathing out.", def: "q_breathe_out", suggest: ["q_breathe_out", "q_breathe_out_s", null] },
+    { group: "Timers and focus", id: "remind_stand", label: "Stand-up reminder", why: "The stand-up reminder card.", def: "p_nudge", suggest: ["p_nudge", "p_stand", "p_tap"] },
+    { group: "Timers and focus", id: "remind_water", label: "Water reminder", why: "The water reminder card.", def: "p_nudge", suggest: ["p_nudge", "p_water", "p_tap"] },
+    { group: "Timers and focus", id: "remind_eyes", label: "Eye break", why: "The eye-break reminder card.", def: "p_nudge", suggest: ["p_nudge", "p_eyes", "p_tap"] },
+    { group: "Timers and focus", id: "habit_done", label: "Habit checked off", why: "Checking off a habit. Also the volume sample.", def: "p_check", suggest: ["p_check", "p_success", "p_gem", "p_saved"] },
+    { group: "Play", id: "pong_serve", label: "Pong serve", why: "The ball comes into play.", def: "p_serve", suggest: ["p_serve", null] },
+    { group: "Play", id: "pong_hit", label: "Pong hit", why: "Ball off the paddle.", def: "p_hit", suggest: ["p_hit", "q_pong_pop"] },
+    { group: "Play", id: "pong_miss", label: "Pong miss", why: "Lost the ball.", def: "p_miss", suggest: ["p_miss", "q_miss_wahwah", "p_wrong"] },
+    { group: "Play", id: "pong_best", label: "New best score", why: "A new best in Pong or Reflex.", def: "p_fanfare", suggest: ["p_fanfare", "p_best", "p_levelup"] },
+    { group: "Play", id: "reflex_go", label: "Reflex go", why: "Press now. Must start instantly.", def: "p_go", suggest: ["p_go", "q_go_sharp", "q_go_double"] },
+    { group: "Play", id: "reflex_early", label: "Reflex too early", why: "Pressed before go.", def: "p_nope", suggest: ["p_nope", "p_error"] },
+    { group: "Play", id: "reflex_result", label: "Reflex time", why: "Your time appears.", def: "q_result_speed", suggest: ["q_result_speed", "p_check", "p_success"] },
+    { group: "Play", id: "dice_roll", label: "Dice roll", why: "Rolling the dice.", def: "p_dice", suggest: ["p_dice", "q_dice_rattle", "q_dice_tumble"] },
+    { group: "Play", id: "coin_flip", label: "Coin flip", why: "Flipping the coin.", def: "p_coin", suggest: ["p_coin", "q_coin_spin", "q_coin_ping"] },
+    { group: "System", id: "startup", label: "Startup", why: "The boot melody.", def: "p_sig_hello", suggest: ["p_sig_hello", "p_sig_bloom", "q_boot_sweep", "q_boot_hello", "p_sig_spin"] },
+    { group: "System", id: "wifi_ok", label: "Wi-Fi connected", why: "After setting up Wi-Fi (not on every reconnect).", def: "p_success", suggest: ["p_success", "p_wifi", null] },
+    { group: "System", id: "error", label: "Something failed", why: "Couldn't connect, couldn't set a location.", def: "p_error", suggest: ["p_error", "p_nope", null] },
+  ];
+  const GROUPS = [...new Set(EVENTS.map(e => e.group))];
+
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const uid = () => "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const isStarter = (id) => CATALOG.some(s => s.id === id);
+
+  // ---------- state ----------
+  function defaults() {
+    const events = {};
+    EVENTS.forEach(e => events[e.id] = e.def);
+    return { mine: [], events, sel: CATALOG[0].id, sim: { vol: "med", out: "laptop" }, collapsed: [], selEvent: EVENTS[0].id, tab: "suggested", editing: false };
+  }
+  function normStep(s) {
+    if (!s) return null;
+    const kind = ["tone", "slide", "rest"].includes(s.kind) ? s.kind : "tone";
+    const ms = clamp(Math.round(+s.ms || 100), MS_MIN, MS_MAX);
+    if (kind === "rest") return { kind, f0: 0, f1: 0, ms };
+    const f0 = clamp(Math.round(+s.f0 || 2000), FMIN, FMAX);
+    const f1 = kind === "slide" ? clamp(Math.round(+s.f1 || f0), FMIN, FMAX) : f0;
+    return { kind, f0, f1, ms };
+  }
+  function normSound(s) {
+    if (!s || !Array.isArray(s.steps)) return null;
+    const out = {
+      id: String(s.id || uid()), name: String(s.name || "Untitled").slice(0, 60),
+      repeat: clamp(parseInt(s.repeat, 10) || 1, 1, 20), gap: clamp(parseInt(s.gap, 10) || 0, 0, 5000),
+      steps: s.steps.map(normStep).filter(Boolean),
+    };
+    if (s.from) out.from = String(s.from);
+    return out;
+  }
+  const sameSound = (a, b) => a.repeat === b.repeat && a.gap === b.gap && JSON.stringify(a.steps) === JSON.stringify(b.steps);
+  // Accepts the current format ({mine}) and the first one ({sounds} with starters mixed in).
+  function migrate(d) {
+    if (!d || typeof d !== "object") return null;
+    const base = defaults();
+    const list = Array.isArray(d.mine) ? d.mine : Array.isArray(d.sounds) ? d.sounds : null;
+    if (!list) return null;
+    const mine = [], remap = {};
+    list.forEach(raw => {
+      const s = normSound(raw);
+      if (!s) return;
+      const st = CATALOG.find(c => c.id === s.id);
+      if (st) {
+        if (sameSound(st, s)) return;            // unchanged starter: it lives in the catalog now
+        const copy = { ...s, id: uid(), from: st.id };
+        remap[s.id] = copy.id; mine.push(copy);  // edited starter: keep the edit as one of mine
+      } else if (!mine.some(m => m.id === s.id)) mine.push(s);
+    });
+    const exists = (id) => mine.some(s => s.id === id) || isStarter(id);
+    const events = { ...base.events };
+    Object.entries(d.events || {}).forEach(([k, v]) => {
+      if (!(k in events)) return;
+      const id = v && (remap[v] || v);
+      events[k] = id && exists(id) ? id : null;
+    });
+    let sel = d.sel && (remap[d.sel] || d.sel);
+    if (!sel || !exists(sel)) sel = mine[0] ? mine[0].id : base.sel;
+    const sim = { ...base.sim, ...(d.sim || {}) };
+    if (!["low", "med", "high"].includes(sim.vol)) sim.vol = base.sim.vol;
+    if (!["laptop", "device"].includes(sim.out)) sim.out = base.sim.out;
+    const selEvent = EVENTS.some(e => e.id === d.selEvent) ? d.selEvent : base.selEvent;
+    const tab = ["suggested", "all", "mine"].includes(d.tab) ? d.tab : base.tab;
+    return { mine, events, sel, sim, collapsed: [], selEvent, tab, editing: !!d.editing && exists(sel) };
+  }
+  function load() {
+    try { const raw = localStorage.getItem(KEY); return raw ? migrate(JSON.parse(raw)) : null; }
+    catch (e) { return null; }
+  }
+  let state = load() || defaults();
+  let saveTimer = null;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }, 150);
+  }
+  save();
+
+  const $ = (id) => document.getElementById(id);
+  const findSound = (id) => state.mine.find(s => s.id === id) || CATALOG.find(s => s.id === id);
+  const cur = () => findSound(state.sel) || CATALOG[0];
+  let selStep = -1;
+  // Returns the current sound ready to change; a starter is copied into My sounds first.
+  function editable() {
+    const s = cur();
+    if (!isStarter(s.id)) return s;
+    const copy = { id: uid(), name: s.name, repeat: s.repeat, gap: s.gap, steps: clone(s.steps), from: s.id };
+    state.mine.unshift(copy);
+    state.sel = copy.id;
+    toast(`Editing a copy of "${s.name}" in My sounds.`);
+    renderLib(); renderBanner();
+    return copy;
+  }
+
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("show"), 2400);
+  }
+  function noteName(f) {
+    if (!f) return "";
+    const n = 12 * Math.log2(f / 440) + 69;
+    const r = Math.round(n), cents = Math.round((n - r) * 100);
+    const name = NAMES[((r % 12) + 12) % 12] + (Math.floor(r / 12) - 1);
+    return Math.abs(cents) <= 4 ? name : name + (cents > 0 ? "+" : "") + cents + "c";
+  }
+  const passLen = (s) => s.steps.reduce((a, st) => a + st.ms, 0);
+  const totalLen = (s) => passLen(s) * s.repeat + s.gap * (s.repeat - 1);
+  const fmtLen = (ms) => ms >= 1000 ? (ms / 1000).toFixed(1) + "s" : ms + "ms";
+  function stepWarn(st) {
+    if (st.kind === "rest") return "";
+    const lo = Math.min(st.f0, st.f1), hi = Math.max(st.f0, st.f1);
+    if (lo < 450) return '<span class="tag warn">thin</span>';
+    if (hi > 6000) return '<span class="tag bad">piercing</span>';
+    if (st.ms < 1000 / Math.max(lo, 1) * 2) return '<span class="tag warn">click</span>';
+    return "";
+  }
+  function esc(t) { return String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  // ---------- audio ----------
+  let ctx = null, playing = null;
+  const waves = {};
+  function audio() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+  function pulseWave(d) {
+    if (waves[d]) return waves[d];
+    const N = 64, re = new Float32Array(N), im = new Float32Array(N);
+    for (let n = 1; n < N; n++) {
+      re[n] = Math.sin(2 * Math.PI * n * d) / (n * Math.PI);
+      im[n] = (1 - Math.cos(2 * Math.PI * n * d)) / (n * Math.PI);
+    }
+    return (waves[d] = ctx.createPeriodicWave(re, im, { disableNormalization: true }));
+  }
+  function flatten(s) {
+    const out = [];
+    for (let r = 0; r < s.repeat; r++) {
+      s.steps.forEach((st, i) => out.push({ ...st, idx: i }));
+      if (r < s.repeat - 1 && s.gap > 0) out.push({ kind: "rest", f0: 0, f1: 0, ms: s.gap, idx: -1 });
+    }
+    return out;
+  }
+  function stop() {
+    if (playing && dev.writer && !playing.single) devWrite("Z");
+    if (playing) { try { playing.osc.stop(); } catch (e) {} playing.dead = true; playing = null; }
+    clearTimeout(stop.loopT);
+  }
+  function play(sound, opts = {}) {
+    stop();
+    if (sound && !opts.single && sound.id && !(state.editing && sound === cur())) previewId = sound.id;
+    if (!sound.steps.length) { toast("This sound has no steps yet."); return; }
+    const items0 = opts.single ? [{ ...opts.single }] : null;
+    const toDevice = dev.writer && state.sim.out !== "laptop";
+    if (toDevice) devSend(items0 ? { steps: items0, repeat: 1, gap: 0, soft: sound.soft } : sound);
+    const c = audio();
+    const osc = c.createOscillator();
+    osc.setPeriodicWave(pulseWave(DUTY[volFor(sound)]));
+    const gate = c.createGain(); gate.gain.value = 0;
+    const out = c.createGain();
+    out.gain.value = 0.66 * 0.3;  // the KY-006 on the board's 3.3 V pin
+    osc.connect(gate);
+    {  // the KY-006: loudest near 2.3 kHz, thin below ~450 Hz
+      const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 450; hp.Q.value = 0.7;
+      const pk = c.createBiquadFilter(); pk.type = "peaking"; pk.frequency.value = 2300; pk.Q.value = 1.3; pk.gain.value = 11;
+      const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 6500; lp.Q.value = 0.7;
+      gate.connect(hp); hp.connect(pk); pk.connect(lp); lp.connect(out);
+      out.gain.value *= 0.45;
+    }
+    if (toDevice && state.sim.out === "device") out.gain.value = 0;  // keep the playhead, silence the laptop
+    out.connect(c.destination);
+    const items = opts.single ? [{ ...opts.single, idx: -2 }] : flatten(sound);
+    const t0 = c.currentTime + 0.03;
+    let t = t0;
+    for (const it of items) {
+      if (it.kind === "rest") {
+        gate.gain.setValueAtTime(0, t);
+      } else {
+        gate.gain.setValueAtTime(1, t);
+        if (it.kind === "slide" && it.f0 !== it.f1) {
+          const n = Math.max(1, Math.round(it.ms / 2));
+          for (let i = 0; i < n; i++) {
+            osc.frequency.setValueAtTime(it.f0 * Math.pow(it.f1 / it.f0, i / n), t + (i * it.ms) / n / 1000);
+          }
+        } else {
+          osc.frequency.setValueAtTime(it.f0, t);
+        }
+      }
+      t += it.ms / 1000;
+    }
+    gate.gain.setValueAtTime(0, t);
+    osc.start(t0);
+    osc.stop(t + 0.05);
+    const p = { osc, t0, end: t, sound, single: !!opts.single };
+    playing = p;
+    osc.onended = () => {
+      if (p.dead || playing !== p) return;
+      playing = null;
+      draw();
+      if (!p.single && $("loop").checked) stop.loopT = setTimeout(() => play(sound), 600);
+    };
+    if (!opts.single) requestAnimationFrame(tick);
+  }
+  function playStep(st) {
+    if (st.kind === "rest") return;
+    play(cur(), { single: { ...st, ms: Math.max(st.ms, 1) } });
+  }
+  function tick() {
+    draw();
+    if (playing && !playing.single) requestAnimationFrame(tick);
+  }
+
+  // ---------- piano roll ----------
+  const cv = $("roll");
+  const g = cv.getContext("2d");
+  let hits = [], geo = null, drag = null;
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function layout() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const s = cur();
+    const span = Math.max(passLen(s), 300) * 1.08;
+    const L = 46, Rp = 10, Tp = 12, B = 22;
+    geo = {
+      w, h, L, Rp, Tp, B, span,
+      x: (ms) => L + (ms / span) * (w - L - Rp),
+      ms: (x) => ((x - L) / (w - L - Rp)) * span,
+      y: (f) => Tp + (1 - (Math.log(f) - Math.log(DMIN)) / (Math.log(DMAX) - Math.log(DMIN))) * (h - Tp - B),
+      f: (y) => Math.exp(Math.log(DMIN) + (1 - (y - Tp) / (h - Tp - B)) * (Math.log(DMAX) - Math.log(DMIN))),
+      pps: (h - Tp - B) / (12 * Math.log2(DMAX / DMIN)),
+    };
+  }
+  // The small read-only timeline above the choices: whatever was played last (or the event's
+  // current sound), with the playhead while it plays.
+  let previewId = null;
+  const mcv = () => $("mini");
+  function previewSound() {
+    return (previewId && findSound(previewId)) || findSound(state.events[state.selEvent]) || null;
+  }
+  function drawMini() {
+    const c = mcv(); if (!c) return;
+    const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+    if (!w) return;
+    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+    const m = c.getContext("2d");
+    m.setTransform(dpr, 0, 0, dpr, 0, 0);
+    m.clearRect(0, 0, w, h);
+    const s = previewSound();
+    $("miniName").textContent = s ? s.name : "No sound";
+    $("miniLen").textContent = s ? `${fmtLen(totalLen(s))}${s.repeat > 1 ? `, plays ${s.repeat}x` : ""}` : "";
+    const L = 10, R = 10, T = 12, B = 12;
+    // Fit the pitch range to the sound (at least an octave and a half), so its shape is easy to see.
+    const fs = s ? s.steps.filter(st => st.kind !== "rest").flatMap(st => [st.f0, st.f1]) : [];
+    let lo = fs.length ? Math.min(...fs) : 1000, hi = fs.length ? Math.max(...fs) : 4000;
+    const mid = Math.sqrt(lo * hi), half = Math.max(Math.sqrt(hi / lo), Math.pow(2, 0.75)) * 1.15;
+    lo = mid / half; hi = mid * half;
+    const y = (f) => T + (1 - (Math.log(Math.max(lo, Math.min(hi, f))) - Math.log(lo)) / (Math.log(hi) - Math.log(lo))) * (h - T - B);
+    m.fillStyle = css("--roll-band"); m.fillRect(0, y(5000), w, y(1000) - y(5000));
+    m.strokeStyle = css("--roll-res"); m.lineWidth = 1; m.beginPath(); m.moveTo(0, y(2300)); m.lineTo(w, y(2300)); m.stroke();
+    if (!s || !s.steps.length) return;
+    const span = Math.max(passLen(s), 200);
+    const x = (ms) => L + (ms / span) * (w - L - R);
+    let t = 0;
+    m.fillStyle = m.strokeStyle = css("--roll-note");
+    s.steps.forEach(st => {
+      const x0 = x(t), wPx = Math.max(2, x(t + st.ms) - x0);
+      if (st.kind === "slide" && st.f0 !== st.f1) {
+        m.lineWidth = 5; m.lineCap = "round";
+        m.beginPath(); m.moveTo(x0 + 1, y(st.f0)); m.lineTo(x0 + Math.max(2, wPx - 1), y(st.f1)); m.stroke();
+        m.lineCap = "butt";
+      } else if (st.kind !== "rest") {
+        m.fillRect(x0, y(st.f0) - 3, wPx, 6);
+      }
+      t += st.ms;
+    });
+    if (playing && !playing.single && playing.sound === s) {
+      const el = (ctx.currentTime - playing.t0) * 1000, cycle = passLen(s) + s.gap;
+      if (el >= 0 && el <= totalLen(s)) {
+        const within = cycle > 0 ? el % cycle : el;
+        if (within <= passLen(s)) {
+          m.strokeStyle = css("--roll-head"); m.lineWidth = 2;
+          m.beginPath(); m.moveTo(x(within), 2); m.lineTo(x(within), h - 2); m.stroke();
+        }
+      }
+    }
+  }
+  function draw() {
+    drawMini();
+    if ($("editorCard").hidden) return;
+    layout();
+    const { w, h, L, Tp, B, x, y } = geo;
+    const s = cur();
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = css("--roll-bg"); g.fillRect(0, 0, w, h);
+    g.fillStyle = css("--roll-band"); g.fillRect(L, y(5000), w - L, y(1000) - y(5000));
+    g.strokeStyle = css("--roll-res"); g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(L, y(2300)); g.lineTo(w, y(2300)); g.stroke();
+    g.font = "11px " + css("--mono"); g.textBaseline = "middle"; g.lineWidth = 1;
+    for (let oct = 4; oct <= 8; oct++) {
+      const f = 261.63 * Math.pow(2, oct - 4);
+      const yy = Math.round(y(f)) + 0.5;
+      g.strokeStyle = css("--roll-grid"); g.beginPath(); g.moveTo(L, yy); g.lineTo(w, yy); g.stroke();
+      g.fillStyle = css("--roll-label"); g.fillText("C" + oct, 8, yy);
+    }
+    g.fillStyle = css("--roll-label"); g.textBaseline = "alphabetic";
+    const stepMs = geo.span > 8000 ? 1000 : geo.span > 2500 ? 500 : geo.span > 1000 ? 200 : geo.span > 400 ? 100 : 50;
+    for (let t = 0; t <= geo.span; t += stepMs) {
+      const xx = Math.round(x(t)) + 0.5;
+      g.strokeStyle = css("--roll-grid"); g.beginPath(); g.moveTo(xx, Tp); g.lineTo(xx, h - B); g.stroke();
+      g.fillText(fmtLen(t), xx + 3, h - 6);
+    }
+    hits = [];
+    let t = 0;
+    const noteC = css("--roll-note"), selC = css("--roll-sel");
+    s.steps.forEach((st, i) => {
+      const x0 = x(t), x1 = x(t + st.ms);
+      const wPx = Math.max(3, x1 - x0);
+      if (st.kind !== "rest") {
+        const color = i === selStep ? selC : noteC;
+        g.fillStyle = color; g.strokeStyle = color;
+        if (st.kind === "slide" && st.f0 !== st.f1) {
+          g.lineWidth = 8; g.lineCap = "round";
+          g.beginPath(); g.moveTo(x0 + 2, y(st.f0)); g.lineTo(x0 + Math.max(4, wPx - 2), y(st.f1)); g.stroke();
+          g.lineCap = "butt";
+          hits.push({ i, x0, x1: x0 + wPx, y0: Math.min(y(st.f0), y(st.f1)) - 7, y1: Math.max(y(st.f0), y(st.f1)) + 7 });
+        } else {
+          const yy = y(st.f0);
+          g.fillRect(x0, yy - 5, wPx, 10);
+          hits.push({ i, x0, x1: x0 + wPx, y0: yy - 8, y1: yy + 8 });
+        }
+      } else if (i === selStep) {
+        g.strokeStyle = selC; g.setLineDash([4, 4]); g.lineWidth = 1;
+        g.strokeRect(x0 + 0.5, Tp + 0.5, wPx, h - Tp - B);
+        g.setLineDash([]);
+      }
+      t += st.ms;
+    });
+    if (playing && !playing.single && playing.sound === s) {
+      const el = (ctx.currentTime - playing.t0) * 1000;
+      const cycle = passLen(s) + s.gap;
+      if (el >= 0 && el <= totalLen(s)) {
+        const within = cycle > 0 ? el % cycle : el;
+        if (within <= passLen(s)) {
+          const xx = x(within);
+          g.strokeStyle = css("--roll-head"); g.lineWidth = 2;
+          g.beginPath(); g.moveTo(xx, Tp); g.lineTo(xx, h - B); g.stroke();
+        }
+      }
+    }
+  }
+  function pos(e) { const r = cv.getBoundingClientRect(); return { px: e.clientX - r.left, py: e.clientY - r.top }; }
+  function hitAt(px, py) {
+    for (let k = hits.length - 1; k >= 0; k--) {
+      const hb = hits[k];
+      if (px >= hb.x0 - 3 && px <= hb.x1 + 4 && py >= hb.y0 && py <= hb.y1) return hb;
+    }
+    return null;
+  }
+  cv.addEventListener("pointermove", (e) => {
+    const { px, py } = pos(e);
+    if (!drag) {
+      const hb = hitAt(px, py);
+      cv.style.cursor = hb ? (px > hb.x1 - 6 && hb.x1 - hb.x0 > 10 ? "ew-resize" : "ns-resize") : "crosshair";
+      return;
+    }
+    if (!drag.moved && Math.abs(px - drag.px) <= 2 && Math.abs(py - drag.py) <= 2) return;
+    drag.moved = true;
+    const st = editable().steps[drag.i];
+    if (drag.mode === "pitch") {
+      const semis = (drag.py - py) / geo.pps;
+      const ratio = Math.pow(2, (e.shiftKey ? semis : Math.round(semis)) / 12);
+      st.f0 = clamp(Math.round(drag.f0 * ratio), FMIN, FMAX);
+      st.f1 = st.kind === "slide" ? clamp(Math.round(drag.f1 * ratio), FMIN, FMAX) : st.f0;
+    } else {
+      const pxPerMs = (geo.w - geo.L - geo.Rp) / drag.span;
+      st.ms = clamp(Math.round(drag.ms + (px - drag.px) / pxPerMs), MS_MIN, MS_MAX);
+    }
+    draw();
+  });
+  cv.addEventListener("pointerdown", (e) => {
+    const { px, py } = pos(e);
+    const hb = hitAt(px, py);
+    if (!hb) {
+      let t = 0, found = -1;
+      const ms = geo.ms(px);
+      cur().steps.forEach((st, i) => { if (st.kind === "rest" && ms >= t && ms < t + st.ms) found = i; t += st.ms; });
+      selStep = found; highlightRow(); draw(); return;
+    }
+    const st = cur().steps[hb.i];
+    selStep = hb.i;
+    drag = { i: hb.i, mode: px > hb.x1 - 6 && hb.x1 - hb.x0 > 10 ? "len" : "pitch", px, py, f0: st.f0, f1: st.f1, ms: st.ms, span: geo.span, moved: false };
+    cv.setPointerCapture(e.pointerId);
+    highlightRow(); draw();
+  });
+  const endDrag = () => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    const st = cur().steps[d.i];
+    if (st && (d.mode === "pitch" || !d.moved)) playStep(st);
+    if (d.moved) { save(); renderSteps(); renderLib(); renderEditor(); }
+    draw();
+  };
+  cv.addEventListener("pointerup", endDrag);
+  cv.addEventListener("pointercancel", endDrag);
+  cv.addEventListener("dblclick", (e) => {
+    const { px, py } = pos(e);
+    if (hitAt(px, py)) return;
+    const f = clamp(Math.round(geo.f(py)), FMIN, FMAX);
+    const snapped = Math.round(440 * Math.pow(2, Math.round(12 * Math.log2(f / 440)) / 12));
+    const s = editable();
+    s.steps.push(T(snapped, 100));
+    selStep = s.steps.length - 1;
+    playStep(s.steps[selStep]);
+    save(); renderAll();
+  });
+  window.addEventListener("resize", draw);
+
+  // ---------- rendering ----------
+  // Lists that show sound names re-render when a sound changes.
+  function renderLib() { renderEvents(); renderChoices(); }
+  function soundOptions(selected, includeNone) {
+    const opt = (s) => `<option value="${s.id}"${s.id === selected ? " selected" : ""}>${esc(s.name)}</option>`;
+    let html = includeNone ? '<option value="">None</option>' : "";
+    if (state.mine.length) html += `<optgroup label="My sounds">${state.mine.map(opt).join("")}</optgroup>`;
+    CATS.forEach(cat => { html += `<optgroup label="${esc(cat)}">${CATALOG.filter(s => s.cat === cat).map(opt).join("")}</optgroup>`; });
+    return html;
+  }
+  function renderBanner() {
+    const s = cur();
+    const b = $("banner");
+    if (isStarter(s.id)) b.innerHTML = `<b>Built in, ${esc(s.cat)}.</b> ${esc(s.desc || "")} Changing it saves a copy to My sounds.`;
+    else if (s.from && findSound(s.from)) b.innerHTML = `<b>My sound</b>, based on ${esc(findSound(s.from).name)}.`;
+    else b.innerHTML = "<b>My sound.</b>";
+    $("delSound").hidden = isStarter(s.id);
+  }
+  function renderEditor() {
+    $("editorCard").hidden = !state.editing;
+    if (!state.editing) return;
+    const ev = evById(state.selEvent);
+    const using = state.events[ev.id] === cur().id;
+    $("useThis").textContent = using ? `In use for ${ev.label}` : `Use for ${ev.label}`;
+    $("useThis").disabled = using;
+    const s = cur();
+    if (document.activeElement !== $("name")) $("name").value = s.name;
+    if (document.activeElement !== $("repeat")) $("repeat").value = s.repeat;
+    if (document.activeElement !== $("gap")) $("gap").value = s.gap;
+    $("stat").textContent = `${s.steps.length} steps, ${fmtLen(passLen(s))} per play, ${fmtLen(totalLen(s))} total`;
+    $("appendSel").innerHTML = soundOptions(null, false);
+    renderBanner();
+  }
+  function renderSteps() {
+    const s = cur();
+    const tb = $("steps"); tb.innerHTML = "";
+    s.steps.forEach((st, i) => {
+      const tr = document.createElement("tr");
+      if (i === selStep) tr.className = "sel";
+      const isRest = st.kind === "rest", isSlide = st.kind === "slide";
+      tr.innerHTML = `
+        <td class="muted">${i + 1}</td>
+        <td><select data-k="kind">
+          <option value="tone"${st.kind === "tone" ? " selected" : ""}>Tone</option>
+          <option value="slide"${isSlide ? " selected" : ""}>Slide</option>
+          <option value="rest"${isRest ? " selected" : ""}>Rest</option></select></td>
+        <td>${isRest ? '<span class="muted">silence</span>' : `<div class="row" style="gap:4px;flex-wrap:nowrap">
+          <button class="small" data-nudge="f0:-1" title="Down a note">-</button>
+          <input type="number" data-k="f0" min="${FMIN}" max="${FMAX}" value="${st.f0}">
+          <button class="small" data-nudge="f0:1" title="Up a note">+</button>
+          <span class="note" data-note="f0">${noteName(st.f0)}</span></div>`}</td>
+        <td>${isSlide ? `<div class="row" style="gap:4px;flex-wrap:nowrap">
+          <button class="small" data-nudge="f1:-1" title="Down a note">-</button>
+          <input type="number" data-k="f1" min="${FMIN}" max="${FMAX}" value="${st.f1}">
+          <button class="small" data-nudge="f1:1" title="Up a note">+</button>
+          <span class="note" data-note="f1">${noteName(st.f1)}</span></div>` : ""}</td>
+        <td><input type="number" data-k="ms" min="${MS_MIN}" max="${MS_MAX}" value="${st.ms}" style="width:66px"></td>
+        <td>${stepWarn(st)}</td>
+        <td><div class="row" style="gap:3px;flex-wrap:nowrap">
+          <button class="small" data-act="hear" title="Play this step"${isRest ? " disabled" : ""}>Hear</button>
+          <button class="small" data-act="up" title="Move up">Up</button>
+          <button class="small" data-act="down" title="Move down">Dn</button>
+          <button class="small" data-act="dup" title="Duplicate">Dup</button>
+          <button class="small" data-act="del" title="Delete">Del</button></div></td>`;
+      tr.addEventListener("focusin", () => { if (selStep !== i) { selStep = i; draw(); highlightRow(); } });
+      tr.querySelectorAll("[data-k]").forEach(el => {
+        const k = el.dataset.k;
+        el.addEventListener(k === "kind" ? "change" : "input", () => {
+          const step = editable().steps[i];
+          if (k === "kind") {
+            step.kind = el.value;
+            if (step.kind === "rest") { step.f0 = step.f1 = 0; }
+            else { if (!step.f0) step.f0 = 2093; step.f1 = step.kind === "slide" ? (step.f1 && step.f1 !== step.f0 ? step.f1 : Math.round(step.f0 * 1.5)) : step.f0; }
+            save(); renderSteps(); renderEditor(); renderLib(); draw(); return;
+          }
+          const v = parseInt(el.value, 10);
+          if (!isFinite(v)) return;
+          if (k === "ms") step.ms = clamp(v, MS_MIN, MS_MAX);
+          else {
+            step[k] = clamp(v, FMIN, FMAX);
+            if (k === "f0" && step.kind === "tone") step.f1 = step.f0;
+            const lab = tr.querySelector(`[data-note="${k}"]`); if (lab) lab.textContent = noteName(step[k]);
+          }
+          tr.children[5].innerHTML = stepWarn(step);
+          save(); renderEditor(); draw();
+        });
+        if (k !== "kind") el.addEventListener("change", () => { el.value = cur().steps[i][k]; renderLib(); });
+      });
+      tr.querySelectorAll("[data-nudge]").forEach(b => b.addEventListener("click", () => {
+        const [k, d] = b.dataset.nudge.split(":");
+        const step = editable().steps[i];
+        step[k] = clamp(Math.round(step[k] * Math.pow(2, +d / 12)), FMIN, FMAX);
+        if (k === "f0" && step.kind === "tone") step.f1 = step.f0;
+        selStep = i; playStep(step); save(); renderSteps(); renderLib(); draw();
+      }));
+      tr.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => {
+        const a = b.dataset.act;
+        if (a === "hear") { selStep = i; playStep(cur().steps[i]); highlightRow(); draw(); return; }
+        if ((a === "up" && i === 0) || (a === "down" && i === cur().steps.length - 1)) return;
+        const e = editable(), steps = e.steps;
+        if (a === "up") { [steps[i - 1], steps[i]] = [steps[i], steps[i - 1]]; selStep = i - 1; }
+        if (a === "down") { [steps[i + 1], steps[i]] = [steps[i], steps[i + 1]]; selStep = i + 1; }
+        if (a === "dup") { steps.splice(i + 1, 0, { ...steps[i] }); selStep = i + 1; }
+        if (a === "del") { steps.splice(i, 1); selStep = Math.min(i, steps.length - 1); }
+        save(); renderAll();
+      }));
+      tb.appendChild(tr);
+    });
+    if (!s.steps.length) tb.innerHTML = '<tr><td colspan="7" class="muted">No steps yet. Add one above or double-click the roll.</td></tr>';
+  }
+  function highlightRow() {
+    [...$("steps").children].forEach((tr, i) => tr.classList.toggle("sel", i === selStep));
+  }
+  const evById = (id) => EVENTS.find(e => e.id === id) || EVENTS[0];
+  const soundName = (id) => { const x = id && findSound(id); return x ? x.name : "No sound"; };
+  function renderEvents() {
+    const box = $("events"); box.innerHTML = "";
+    GROUPS.forEach(g => {
+      const h = document.createElement("div"); h.className = "egrp"; h.textContent = g; box.appendChild(h);
+      EVENTS.filter(e => e.group === g).forEach(ev => {
+        const id = state.events[ev.id];
+        const changed = (id || null) !== (ev.def || null);
+        const row = document.createElement("div");
+        row.className = "erow" + (ev.id === state.selEvent ? " sel" : "");
+        row.innerHTML = `<span class="lb">${esc(ev.label)}</span><span class="cur${changed ? " changed" : ""}" title="${changed ? "Changed from the default" : "The default"}">${esc(soundName(id))}</span>` +
+          (id ? `<button class="small" title="Play">&#9654;</button>` : "<span></span>");
+        row.addEventListener("click", (e) => {
+          if (e.target.tagName === "BUTTON") { play(findSound(id)); return; }
+          state.selEvent = ev.id; previewId = null; $("search").value = ""; save(); renderEvents(); renderChoices();
+        });
+        box.appendChild(row);
+      });
+    });
+  }
+  function choiceRow(id, tag) {
+    const ev = evById(state.selEvent);
+    const x = id && findSound(id);
+    const inUse = (state.events[ev.id] || null) === (id || null);
+    const row = document.createElement("div");
+    row.className = "crow" + (inUse ? " on" : "");
+    const tags = (tag ? `<i>${tag}</i>` : "") + (x && x.soft ? "<i>soft</i>" : "") + ((id || null) === (ev.def || null) ? "<i>default</i>" : "");
+    row.innerHTML = (x ? `<button class="small" title="Play">&#9654;</button>` : "<span></span>") +
+      `<div><div class="nm">${esc(x ? x.name : "No sound")}${tags}</div><div class="ds">${esc(x ? (x.desc || (x.from && findSound(x.from) ? "Based on " + findSound(x.from).name : "")) : "Silent.")}</div></div>` +
+      (inUse ? `<span class="inuse">In use</span>` : `<button class="small use">Use</button>`) ;
+    if (x) row.querySelector("button").addEventListener("click", () => play(x));
+    const use = row.querySelector(".use");
+    if (use) use.addEventListener("click", () => {
+      state.events[ev.id] = id || null; save(); renderEvents(); renderChoices();
+      if (x) play(x);
+      toast(`${ev.label}: ${x ? x.name : "no sound"}`);
+    });
+    return row;
+  }
+  function renderChoices() {
+    const ev = evById(state.selEvent);
+    $("choiceTitle").textContent = ev.label;
+    $("choiceWhy").textContent = `${ev.why} Now: ${soundName(state.events[ev.id])}.`;
+    const box = $("choices"); box.innerHTML = "";
+    const q = $("search").value.trim().toLowerCase();
+    const match = (x) => !q || (x ? x.name.toLowerCase().includes(q) || (x.desc || "").toLowerCase().includes(q) || (x.cat || "").toLowerCase().includes(q) : "no sound".includes(q));
+    const head = (t) => { const h = document.createElement("div"); h.className = "cgrp"; h.textContent = t; box.appendChild(h); };
+    const shown = new Set();
+    // Suggested first, then my sounds, then everything else by category.
+    const sug = ev.suggest.filter(id => match(id && findSound(id)));
+    if (sug.length) { head("Suggested"); sug.forEach(id => { box.appendChild(choiceRow(id)); shown.add(id); }); }
+    const mine = state.mine.filter(match);
+    if (mine.length) {
+      head("My sounds");
+      mine.forEach(x => {
+        const r = choiceRow(x.id);
+        const ed = document.createElement("button"); ed.className = "small use"; ed.textContent = "Edit";
+        ed.addEventListener("click", () => openEditor(x.id));
+        r.lastChild.before(ed); r.style.gridTemplateColumns = "30px 1fr auto auto";
+        box.appendChild(r);
+      });
+    }
+    if (!shown.has(null) && match(null)) { head("Silence"); box.appendChild(choiceRow(null)); }
+    CATS.forEach(cat => {
+      const items = CATALOG.filter(x => x.cat === cat && !shown.has(x.id) && match(x));
+      if (!items.length) return;
+      head(cat);
+      items.forEach(x => box.appendChild(choiceRow(x.id)));
+    });
+    if (!box.children.length) { const p = document.createElement("div"); p.className = "empty"; p.textContent = "No sounds match."; box.appendChild(p); }
+    drawMini();
+  }
+  function renderSim() {
+    [["volSeg", "vol"], ["outSeg", "out"]].forEach(([id, k]) => {
+      $(id).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === state.sim[k]));
+    });
+  }
+  function openEditor(id) {
+    state.sel = id; state.editing = true; selStep = -1; save(); renderAll();
+    $("editorCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function renderAll() { renderEvents(); renderChoices(); renderEditor(); if (state.editing) renderSteps(); renderSim(); draw(); }
+
+  // ---------- controls ----------
+  $("volSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.sim.vol = b.dataset.v; save(); renderSim();
+    const x = findSound(state.events[state.selEvent]); if (x) play(x);
+  });
+  $("resetAll").addEventListener("click", () => {
+    if (!confirm("Put every event back on its default sound? Your own sounds stay in My sounds.")) return;
+    EVENTS.forEach(ev => state.events[ev.id] = ev.def);
+    save(); renderAll(); toast("All events are back on their defaults.");
+  });
+  $("createNew").addEventListener("click", () => {
+    const x = { id: uid(), name: "New sound", repeat: 1, gap: 0, steps: [T(2093, 100)] };
+    state.mine.unshift(x);
+    openEditor(x.id); selStep = 0;
+    $("name").focus(); $("name").select();
+  });
+  $("editCopy").addEventListener("click", () => {
+    const src = findSound(state.events[state.selEvent]) || findSound(evById(state.selEvent).suggest.find(Boolean));
+    if (!src) return;
+    const x = { id: uid(), name: src.name + " copy", repeat: src.repeat, gap: src.gap, steps: clone(src.steps), from: isStarter(src.id) ? src.id : src.from };
+    if (src.soft) x.soft = true;
+    if (!x.from) delete x.from;
+    state.mine.unshift(x);
+    openEditor(x.id);
+  });
+  $("useThis").addEventListener("click", () => {
+    const ev = evById(state.selEvent);
+    state.events[ev.id] = cur().id; save(); renderAll(); toast(`${ev.label}: ${cur().name}`);
+  });
+  $("closeEditor").addEventListener("click", () => { stop(); state.editing = false; save(); renderAll(); });
+  $("outSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.sim.out = b.dataset.v; save(); renderSim();
+  });
+  $("search").addEventListener("input", renderChoices);
+  $("play").addEventListener("click", () => play(cur()));
+  $("stop").addEventListener("click", () => { stop(); draw(); });
+  $("name").addEventListener("input", (e) => { editable().name = e.target.value.slice(0, 60) || "Untitled"; save(); renderLib(); });
+  $("name").addEventListener("change", () => { renderEvents(); renderEditor(); });
+  $("repeat").addEventListener("input", (e) => { const v = parseInt(e.target.value, 10); if (isFinite(v)) { editable().repeat = clamp(v, 1, 20); save(); renderEditor(); renderLib(); } });
+  $("gap").addEventListener("input", (e) => { const v = parseInt(e.target.value, 10); if (isFinite(v)) { editable().gap = clamp(v, 0, 5000); save(); renderEditor(); renderLib(); } });
+  document.querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => {
+    const s = editable(), k = b.dataset.add;
+    const st = k === "tone" ? T(2093, 100) : k === "slide" ? S(1568, 2637, 150) : k === "rest" ? R(50) : T(3500, 2);
+    const at = selStep >= 0 ? selStep + 1 : s.steps.length;
+    s.steps.splice(at, 0, st); selStep = at;
+    playStep(st); save(); renderAll();
+  }));
+  document.querySelectorAll("[data-tr]").forEach(b => b.addEventListener("click", () => {
+    const r = Math.pow(2, +b.dataset.tr / 12);
+    const out = cur().steps.some(st => st.kind !== "rest" && (st.f0 * r < FMIN || st.f0 * r > FMAX || st.f1 * r < FMIN || st.f1 * r > FMAX));
+    if (out) { toast("That would push notes outside 150 Hz to 10 kHz."); return; }
+    const s = editable();
+    s.steps.forEach(st => { if (st.kind !== "rest") { st.f0 = Math.round(st.f0 * r); st.f1 = Math.round(st.f1 * r); } });
+    save(); renderAll(); play(s);
+  }));
+  document.querySelectorAll("[data-sp]").forEach(b => b.addEventListener("click", () => {
+    const k = +b.dataset.sp, s = editable();
+    s.steps.forEach(st => st.ms = clamp(Math.round(st.ms * k), MS_MIN, MS_MAX));
+    s.gap = clamp(Math.round(s.gap * k), 0, 5000);
+    save(); renderAll(); play(s);
+  }));
+  $("reverse").addEventListener("click", () => {
+    const s = editable();
+    s.steps.reverse();
+    s.steps.forEach(st => { if (st.kind === "slide") [st.f0, st.f1] = [st.f1, st.f0]; });
+    selStep = -1; save(); renderAll(); play(s);
+  });
+  $("appendBtn").addEventListener("click", () => {
+    const src = findSound($("appendSel").value);
+    if (!src) return;
+    const srcSteps = clone(src.steps);
+    const s = editable();
+    s.steps.push(...srcSteps);
+    save(); renderAll(); toast(`Added "${src.name}" to the end.`);
+  });
+  $("delSound").addEventListener("click", () => {
+    const s = cur();
+    if (isStarter(s.id)) return;
+    const usedBy = EVENTS.filter(ev => state.events[ev.id] === s.id);
+    if (!confirm(`Delete "${s.name}"?` + (usedBy.length ? ` ${usedBy.map(e => e.label).join(", ")} will go back to the default.` : ""))) return;
+    state.mine.splice(state.mine.indexOf(s), 1);
+    usedBy.forEach(ev => state.events[ev.id] = ev.def);
+    state.editing = false; selStep = -1; save(); renderAll();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, select, textarea, button, dialog")) return;
+    if (e.code === "Space") { e.preventDefault(); playing ? stop() : play(cur()); draw(); }
+    if ((e.key === "Delete" || e.key === "Backspace") && selStep >= 0 && selStep < cur().steps.length) {
+      const s = editable();
+      s.steps.splice(selStep, 1); selStep = Math.min(selStep, s.steps.length - 1); save(); renderAll();
+    }
+  });
+
+  // ---------- export / import ----------
+  function cIdent(name, used) {
+    let id = "SND_" + (name.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "SOUND");
+    let k = id, n = 2;
+    while (used.has(k)) k = id + "_" + n++;
+    used.add(k); return k;
+  }
+  function firmwareCode() {
+    const used = new Set(), ids = {};
+    const list = [...state.mine];
+    EVENTS.forEach(ev => { const s = findSound(state.events[ev.id]); if (s && !list.includes(s)) list.push(s); });
+    const lines = [
+      "// Generated by Desk Buddy sound lab (sound-lab.html). Edit there, not here.",
+      "// Each step: f0, f1 in Hz (0 = rest), ms. f0 != f1 is an exponential slide, stepped every 2 ms.",
+      "// Volume is the device setting: LEDC duty 50% High, 15% Med, 5% Low.",
+      "#pragma once",
+      "#include <stdint.h>",
+      "",
+      "struct ToneStep { uint16_t f0, f1, ms; };",
+      "struct Sound { const ToneStep* steps; uint16_t count; uint8_t repeat; uint16_t gapMs; };",
+      "",
+    ];
+    list.forEach(s => {
+      const id = cIdent(s.name, used); ids[s.id] = id;
+      const steps = s.steps.length ? s.steps : [R(1)];
+      lines.push(`// ${s.name.replace(/\*\//g, "")}: ${totalLen(s)} ms`);
+      lines.push(`static const ToneStep ${id}_STEPS[] = {`);
+      for (let i = 0; i < steps.length; i += 6) {
+        lines.push("  " + steps.slice(i, i + 6).map(st => `{${st.f0}, ${st.f1}, ${st.ms}}`).join(", ") + ",");
+      }
+      lines.push("};");
+      lines.push(`static const Sound ${id} = { ${id}_STEPS, ${steps.length}, ${s.repeat}, ${s.gap} };`);
+      lines.push("");
+    });
+    lines.push("enum SoundEvent : uint8_t {");
+    EVENTS.forEach(ev => lines.push(`  EV_${ev.id.toUpperCase()},`));
+    lines.push("  EV_COUNT", "};", "");
+    lines.push("static const Sound* const EVENT_SOUND[EV_COUNT] = {");
+    EVENTS.forEach(ev => {
+      const sid = state.events[ev.id];
+      lines.push(`  ${sid && ids[sid] ? "&" + ids[sid] : "nullptr"},  // ${ev.label}`);
+    });
+    lines.push("};", "");
+    return lines.join("\n");
+  }
+  $("exportC").addEventListener("click", async () => {
+    const code = firmwareCode();
+    $("codeOut").value = code;
+    $("codeDlg").showModal();
+    try { await navigator.clipboard.writeText(code); } catch (e) {}
+  });
+  $("copyCode").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("codeOut").value); toast("Copied."); }
+    catch (e) { $("codeOut").select(); toast("Select all and copy manually."); }
+  });
+  $("closeCode").addEventListener("click", () => $("codeDlg").close());
+  $("exportJson").addEventListener("click", () => {
+    const data = JSON.stringify({ format: "desk_buddy.sounds", version: 2, mine: state.mine, events: state.events }, null, 2);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+    a.download = "desk-buddy-sounds.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $("importJson").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    try {
+      const d = migrate({ ...JSON.parse(await f.text()), sim: state.sim, selEvent: state.selEvent, tab: state.tab });
+      if (!d) throw new Error("bad");
+      if (!confirm(`Replace My sounds (${state.mine.length}) and event choices with this file (${d.mine.length} sounds)? Starters aren't affected.`)) return;
+      state = d; selStep = -1; save(); renderAll(); toast("Imported.");
+    } catch (err) { toast("That file isn't a sound lab export."); }
+  });
+
+  // ---------- device (Web Serial, temporary) ----------
+  // Sends "Z<duty>,<repeat>,<gap>:f0,f1,ms;..." to the desk buddy firmware, which plays it on the buzzer.
+  const dev = { port: null, writer: null, reader: null };
+  const DEV_DUTY = { low: 5, med: 15, high: 50, soft: 2 };
+  const DEV_MAX_STEPS = 400, DEV_MAX_CHARS = 4000;
+  function devStatus(t) { $("devStatus").textContent = t; }
+  function devRender() {
+    $("devConnect").textContent = dev.writer ? "Disconnect" : "Connect";
+    $("devSync").hidden = !dev.writer;
+    if (!dev.writer) devStatus("Not connected");
+  }
+  async function devWrite(line) {
+    if (!dev.writer) return;
+    try { await dev.writer.write(new TextEncoder().encode(line + "\n")); }
+    catch (e) { toast("Lost the device."); devClose(); }
+  }
+  function devSend(sound) {
+    let steps = sound.steps.slice(0, DEV_MAX_STEPS).map(st => st.kind === "rest" ? `0,0,${st.ms}` : `${st.f0},${st.kind === "slide" ? st.f1 : st.f0},${st.ms}`);
+    let body = steps.join(";");
+    const head = `Z${DEV_DUTY[volFor(sound)] || 50},${sound.repeat || 1},${sound.gap || 0}:`;
+    let cut = steps.length < sound.steps.length;
+    while (head.length + body.length > DEV_MAX_CHARS) { steps.pop(); body = steps.join(";"); cut = true; }
+    if (cut) toast(`Too long for the device test: sent the first ${steps.length} steps.`);
+    devWrite(head + body);
+  }
+  async function devReadLoop() {
+    const dec = new TextDecoder();
+    let buf = "";
+    try {
+      while (dev.port && dev.port.readable) {
+        dev.reader = dev.port.readable.getReader();
+        try {
+          for (;;) {
+            const { value, done } = await dev.reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            let i;
+            while ((i = buf.indexOf("\n")) >= 0) {
+              const l = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+              if (l.startsWith("[snd]")) devStatus("Connected: " + l.slice(6));
+              if (l.startsWith("[sound] ") && dev.wait) dev.wait(l.slice(8));
+            }
+            if (buf.length > 8192) buf = "";  // screenshots or other binary
+          }
+        } finally { dev.reader.releaseLock(); dev.reader = null; }
+      }
+    } catch (e) { /* device unplugged */ }
+    if (dev.port) { toast("Device disconnected."); devClose(); }
+  }
+  // Ask the device something and collect its "[sound] ..." answer lines until done(line) is true.
+  function devAsk(line, done, ms = 3000) {
+    return new Promise((resolve, reject) => {
+      const lines = [];
+      const t = setTimeout(() => { dev.wait = null; reject(new Error("The desk buddy didn't answer. Is its firmware up to date?")); }, ms);
+      dev.wait = (l) => { lines.push(l); if (done(l)) { clearTimeout(t); dev.wait = null; resolve(lines); } };
+      devWrite(line);
+    });
+  }
+  const answer = (l) => l === "ok" || l.startsWith("error");
+  // The device's fonts are ASCII only, and "|" ends a name in the command.
+  const devName = (n) => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7e]|\|/g, "").slice(0, 40) || "My sound";
+  const soundText = (x) => `${devName(x.name)}|${x.repeat || 1},${x.gap || 0},${x.soft ? 1 : 0}:` +
+    x.steps.map(st => st.kind === "rest" ? `0,0,${st.ms}` : `${st.f0},${st.kind === "slide" ? st.f1 : st.f0},${st.ms}`).join(";");
+  $("devGet").addEventListener("click", async () => {
+    try {
+      const lines = await devAsk("SND?", (l) => l === "end");
+      let n = 0;
+      const customs = {};
+      lines.forEach(l => { const m = l.match(/^custom (\S+) (.*)$/); if (m) customs[m[1]] = m[2]; });
+      lines.forEach(l => {
+        const m = l.match(/^pick (\S+) (\S+)$/);
+        if (!m || !EVENTS.some(e => e.id === m[1])) return;
+        let id = m[2] === "-" ? null : m[2];
+        if (id === "*") {
+          const text = customs[m[1]] || "";
+          const bar = text.indexOf("|"), colon = text.indexOf(":", bar);
+          const [rep, gap, soft] = text.slice(bar + 1, colon).split(",").map(Number);
+          const steps = text.slice(colon + 1).split(";").map(t => { const [a, b, ms] = t.split(",").map(Number); return a === 0 ? R(ms) : a === b ? T(a, ms) : S(a, b, ms); });
+          const x = { id: uid(), name: text.slice(0, bar), repeat: rep || 1, gap: gap || 0, steps };
+          if (soft) x.soft = true;
+          const same = state.mine.find(y => y.name === x.name && sameSound(y, x));
+          if (same) id = same.id; else { state.mine.unshift(x); id = x.id; }
+        } else if (id && !findSound(id)) return;  // a sound this page doesn't know
+        if (state.events[m[1]] !== id) { state.events[m[1]] = id; n++; }
+      });
+      const v = lines.find(l => l.startsWith("vol "));
+      if (v) { const k = ["", "low", "med", "high"][+v.slice(4)]; if (k) state.sim.vol = k; }
+      save(); renderAll();
+      toast(n ? `Loaded the desk buddy's sounds: ${n} differ from what was here.` : "This page already matches the desk buddy.");
+    } catch (e) { toast(e.message); }
+  });
+  $("devPut").addEventListener("click", async () => {
+    let sent = 0;
+    try {
+      for (const ev of EVENTS) {
+        const id = state.events[ev.id];
+        const mine = id && state.mine.find(x => x.id === id);
+        const line = mine ? `SNDC ${ev.id} ${soundText(mine)}` : `SNDP ${ev.id} ${id || "-"}`;
+        if (line.length > 3950) { toast(`"${mine.name}" is too long for the desk buddy. Shorten it and send again.`); return; }
+        const r = (await devAsk(line, answer)).pop();
+        if (r !== "ok") { toast(`${ev.label}: the desk buddy said "${r}".`); return; }
+        sent++;
+      }
+      toast(`Sent: the desk buddy now plays these ${sent} sounds.`);
+    } catch (e) { toast(e.message); }
+  });
+  async function devOpen(port) {
+    try {
+      await port.open({ baudRate: 115200 });
+    } catch (e) {
+      toast("Couldn't open the device. Is a serial tool (screenshot, logger, upload) using it?");
+      return;
+    }
+    dev.port = port;
+    dev.writer = port.writable.getWriter();
+    devRender();
+    devStatus("Connected");
+    devReadLoop();
+  }
+  async function devClose() {
+    const p = dev.port; dev.port = null;
+    try { if (dev.reader) await dev.reader.cancel(); } catch (e) {}
+    try { if (dev.writer) { dev.writer.releaseLock(); } } catch (e) {}
+    dev.writer = null;
+    try { if (p) await p.close(); } catch (e) {}
+    devRender();
+  }
+  $("devConnect").addEventListener("click", async () => {
+    if (dev.writer) { devWrite("Z"); devClose(); return; }
+    if (!("serial" in navigator)) { toast("This browser can't reach USB devices. Open the page in Chrome or Edge."); return; }
+    let port = (await navigator.serial.getPorts())[0];
+    if (!port) {
+      try { port = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x303a }] }); }
+      catch (e) { return; }  // picker cancelled
+    }
+    devOpen(port);
+  });
+  if ("serial" in navigator) navigator.serial.addEventListener("disconnect", (e) => { if (e.target === dev.port) devClose(); });
+  window.addEventListener("beforeunload", () => { if (dev.port) devClose(); });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>

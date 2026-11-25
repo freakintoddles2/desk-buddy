@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting Started</title>
+<meta name="description" content="Install the desk buddy firmware, learn the knob and touch, set up Wi-Fi, and tour the panels.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="top">
+    <a class="brand" href="./">Desk Buddy</a>
+    <a href="guide.html">Getting started</a>
+    <a href="sound-lab.html">Sound lab</a>
+    <a href="display.html">Try it in your browser</a>
+    <a href="https://github.com/freakintoddles2/desk-buddy">GitHub</a>
+  </nav>
+
+  <h1>Getting started</h1>
+  <p class="lead">Install the firmware, learn the four moves, set up Wi-Fi if you want it, and take a quick tour.</p>
+
+  <h2>1. Install</h2>
+  <ol>
+    <li>Use a computer with <b>Chrome or Edge</b>.</li>
+    <li>The first time only: hold the <b>BOOT</b> button on the board while you plug it into the computer with a USB-C data cable, then let go. (The factory demo doesn't open its USB port by itself.)</li>
+    <li>On the <a href="./">home page</a>, click <b>Install on your desk buddy</b> and pick the port that appears (often "USB JTAG/serial debug unit").</li>
+    <li>On a first install, choose to <b>erase</b> the device. It takes a minute or two, then the desk buddy restarts on its Home screen.</li>
+  </ol>
+  <p class="note">No port shows up? Try another cable (some only charge), plug straight into the computer rather than a hub or monitor, and hold BOOT while plugging in.</p>
+
+  <h2>2. The four moves</h2>
+  <table>
+    <tr><th>Move</th><th>What it does</th></tr>
+    <tr><td><b>Turn</b> the knob</td><td>Moves the highlight in a list, or changes the value you're setting.</td></tr>
+    <tr><td><b>Press</b> the knob</td><td>Chooses or confirms the highlighted thing.</td></tr>
+    <tr><td><b>Swipe</b> left or right</td><td>Goes to the next or previous panel.</td></tr>
+    <tr><td><b>Tap</b></td><td>Acts on whatever you touched, right away.</td></tr>
+  </table>
+  <p>Hold the knob (or a still finger) for a moment to go back a screen. Hold for 3 seconds to jump to Home from anywhere. Lists also scroll with a drag or a flick, and dials take a tap or drag on their ring.</p>
+
+  <div class="step">
+    <div>
+      <h3>Fast travel</h3>
+      <p>Pull down from the top edge to see every panel in one row. Keep your finger down and slide or flick sideways, then let go on the one you want. The sun button at the top opens Brightness.</p>
+    </div>
+    <img src="img/tray.png" alt="The fast travel tray: large panel icons in a row with Home in the middle">
+  </div>
+
+  <h2>3. Home</h2>
+  <div class="step">
+    <div>
+      <p>Home shows the time and date, today's weather, and a few glance stats (habits done, the next countdown, a running timer). Tap a stat, or turn to it and press, to jump to its panel.</p>
+      <h3>Change the face</h3>
+      <p>Swipe up from the bottom edge of Home. Swipe or turn through the faces, and tap the toggles to choose which elements show. Tap the middle preview, or press, to close.</p>
+    </div>
+    <img src="img/customize.png" alt="The customize sheet: a preview of Home in the middle, the next face peeking in, and toggles for Weather, Habits, Days and Timers">
+  </div>
+  <div class="gallery">
+    <figure><img src="img/home-sunring.png" alt="Sun ring face"><figcaption><b>Sun ring</b>A 24-hour sky ring with the sun or moon at the current hour.</figcaption></figure>
+    <figure><img src="img/home-livingsky.png" alt="Living sky face"><figcaption><b>Living sky</b>The whole screen is the sky outside, from dawn to night.</figcaption></figure>
+    <figure><img src="img/home-heat.png" alt="Heat face"><figcaption><b>Heat</b>A synthwave sunset by day, a neon skyline after dark.</figcaption></figure>
+  </div>
+
+  <h2>4. Wi-Fi (optional)</h2>
+  <div class="step">
+    <div>
+      <p>Wi-Fi gives you network time and the weather. Everything else works without it.</p>
+      <ol>
+        <li>Go to <b>Settings &gt; Wi-Fi</b>. The desk buddy starts its own network.</li>
+        <li>On your phone, join the <b>DeskBuddy-XXXX</b> network it shows. A setup page opens by itself.</li>
+        <li>Pick your Wi-Fi, enter its password, and type your city for the weather. Save.</li>
+      </ol>
+      <p>Only 2.4 GHz networks work. Without Wi-Fi, set the time in <b>Settings &gt; Date &amp; time</b>.</p>
+    </div>
+    <img src="img/setup.png" alt="Setup mode: join the DeskBuddy network on your phone">
+  </div>
+
+  <h2>5. The panels</h2>
+  <p>Swipe between them, or use fast travel. You can hide and reorder panels in <b>Settings &gt; Panels</b>.</p>
+  <div class="gallery">
+    <figure><img src="img/weather.png" alt="Weather panel"><figcaption><b>Weather</b>Turn to scrub through hours or days; press to switch Hourly and 7-day. Needs Wi-Fi.</figcaption></figure>
+    <figure><img src="img/world.png" alt="World panel"><figcaption><b>World</b>Clocks for other cities, with a day and night ring. Add cities at the end of the list.</figcaption></figure>
+    <figure><img src="img/focus.png" alt="Focus panel"><figcaption><b>Focus</b>Turn (or drag the ring) to set the minutes, press Start.</figcaption></figure>
+    <figure><img src="img/timers.png" alt="Timers panel"><figcaption><b>Timers</b>A stopwatch and as many labeled timers as you like.</figcaption></figure>
+    <figure><img src="img/habits.png" alt="Habits panel"><figcaption><b>Habits</b>Check off daily habits and keep a streak.</figcaption></figure>
+    <figure><img src="img/days.png" alt="Days panel"><figcaption><b>Days</b>Countdowns to the dates you care about.</figcaption></figure>
+    <figure><img src="img/play.png" alt="Play panel"><figcaption><b>Play</b>Ring pong (the knob is the paddle), dice, a coin and a reflex test.</figcaption></figure>
+  </div>
+  <p><b>Breathe</b> guides slow breathing: turn to pick a pattern, press to start.</p>
+
+  <h2>6. Settings worth a look</h2>
+  <div class="step">
+    <div>
+      <ul>
+        <li><b>Brightness</b> and <b>Auto brightness</b>: follows the sun and dims toward your bedtime.</li>
+        <li><b>Sound</b>: volume, knob clicks, and the sound for each event (needs the optional buzzer).</li>
+        <li><b>Stand-up, water and eye-break reminders</b>, and the hours they run.</li>
+        <li><b>Time zone</b> and <b>Time format</b>.</li>
+        <li><b>Return to Home</b> after a few idle minutes.</li>
+        <li><b>Panels</b>: show, hide and reorder.</li>
+      </ul>
+    </div>
+    <img src="img/settings.png" alt="The Settings list">
+  </div>
+
+  <h2>7. Sounds</h2>
+  <div class="step">
+    <div>
+      <p>With a KY-006 passive buzzer fitted, the desk buddy clicks softly as you turn and press, chimes when a timer ends, and plays a little melody when it starts. In <b>Settings &gt; Sound</b>, set the volume, turn knob clicks off, or open <b>Sounds</b> to pick the sound for any event from the whole library. You hear each one as you turn to it.</p>
+      <p>On a computer, the <a href="sound-lab.html">sound lab</a> lists the same events. Connect the desk buddy by USB to hear sounds on it, make your own, and send them over.</p>
+    </div>
+    <img src="img/sounds.png" alt="Settings, Sound, Sounds: each event with the sound it plays">
+  </div>
+
+  <h2>8. Updating</h2>
+  <p>Come back to the <a href="./">home page</a> and click Install again. Don't erase the device when it asks: your settings, habits, countdowns and Wi-Fi stay.</p>
+
+  <footer>
+    Questions or ideas: open an issue on <a href="https://github.com/freakintoddles2/desk-buddy">GitHub</a>.
+  </footer>
+</div>
+</body>
+</html>

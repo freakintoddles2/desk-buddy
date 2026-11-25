@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk Buddy</title>
+<meta name="description" content="A round desk gadget on the CrowPanel 2.1-inch rotary display: clock, focus timer, timers, habits, weather and more. Install it from your browser.">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top">
+    <a class="brand" href="./">Desk Buddy</a>
+    <a href="guide.html">Getting started</a>
+    <a href="sound-lab.html">Sound lab</a>
+    <a href="display.html">Try it in your browser</a>
+    <a href="https://github.com/freakintoddles2/desk-buddy">GitHub</a>
+  </nav>
+
+  <section class="hero">
+    <div>
+      <h1>A little round buddy for your desk</h1>
+      <p class="lead">A clock with a living sky, a focus timer, timers, habits, countdowns, world clocks, weather and break reminders, all on one knob and a round touch screen. No accounts, no cloud, no phone app.</p>
+      <div class="row" id="install">
+        <esp-web-install-button manifest="manifest.json">
+          <button slot="activate">Install on your desk buddy</button>
+          <span slot="unsupported" class="note">Installing needs Chrome or Edge on a computer (not Safari, Firefox or a phone).</span>
+          <span slot="not-allowed" class="note">Installing needs a secure page (https).</span>
+        </esp-web-install-button>
+        <a class="btn ghost" href="guide.html">How to install</a>
+      </div>
+      <p style="color:var(--muted);font-size:14px">Firmware <span id="ver">version</span>. Plug the board in with a USB-C data cable first. The first time, hold <b>BOOT</b> on the board while you plug it in.</p>
+    </div>
+    <img class="shot" src="img/home-sunring.png" alt="The desk buddy's Home screen: a clock inside a ring colored like the sky through the day, with the sun at the current hour">
+  </section>
+
+  <div class="cards">
+    <div class="card"><h3>Getting started</h3><p>Install, find your way around with the knob and touch, and set up Wi-Fi.</p><a href="guide.html">Read the guide</a></div>
+    <div class="card"><h3>Sound lab</h3><p>Hear every sound, pick what plays for each event, or make your own and send it to the device over USB.</p><a href="sound-lab.html">Open the sound lab</a></div>
+    <div class="card"><h3>Try it first</h3><p>The whole interface runs in your browser, so you can play with it before you build one.</p><a href="display.html">Try it</a></div>
+    <div class="card"><h3>Build and change it</h3><p>Source, parts list, the printable stand, and notes for changing the firmware (with or without an AI coding agent).</p><a href="https://github.com/freakintoddles2/desk-buddy">On GitHub</a></div>
+  </div>
+
+  <h2>What you need</h2>
+  <ul>
+    <li><b>Elecrow CrowPanel 2.1" HMI ESP32 Rotary Display</b> (480 x 480 round touch screen with a knob). It comes with a USB-C cable.</li>
+    <li>A computer with <b>Chrome or Edge</b> to install the firmware.</li>
+    <li>Optional: Wi-Fi (for network time and weather), a KY-006 passive buzzer for sounds, and the 3D-printed stand from the GitHub repo.</li>
+  </ul>
+
+  <footer>
+    Weather data by <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0). Installs with <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>. Code under the MIT license.
+  </footer>
+</div>
+<script>
+  fetch("manifest.json").then(r => r.json()).then(m => { document.getElementById("ver").textContent = m.version; }).catch(() => {});
+</script>
+</body>
+</html>

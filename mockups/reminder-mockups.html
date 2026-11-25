@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reminder styles</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --accent: #4f8cff; --ok: #3fcf7f; --amber: #f5b942;
+        --size: 340px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1180px; }
+    .lead { color: var(--page-muted); margin: 0 auto 24px; max-width: 1180px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; max-width: 1180px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .card h2 { font-size: 15px; margin: 0 0 2px; align-self: flex-start; }
+    .card .tag { margin: 0 0 12px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .card ul { margin: 12px 0 0; padding-left: 18px; font-size: 13px; color: var(--page-muted); align-self: stretch; }
+    .card li { margin: 3px 0; }
+    .card li b { color: var(--page-text); font-weight: 600; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
+    .tabs button {
+        font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+        border: 1px solid var(--border); background: transparent; color: var(--page-muted);
+    }
+    .tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .note { margin-top: 8px; font-size: 12px; color: var(--page-muted); text-align: center; min-height: 18px; max-width: 360px; }
+
+    .device {
+        width: calc(var(--size) + 28px); height: calc(var(--size) + 28px); border-radius: 50%;
+        background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f;
+        display: grid; place-items: center; outline: none;
+    }
+    .device:focus-visible { box-shadow: 0 10px 30px rgba(0, 0, 0, .3), 0 0 0 3px var(--accent); }
+    .screen {
+        position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden;
+        background: radial-gradient(circle at 50% 35%, #161a22, var(--screen) 70%); color: var(--ink);
+        box-shadow: inset 0 0 0 3px #000; user-select: none; touch-action: none;
+    }
+    .layer { position: absolute; inset: 0; }
+
+    /* the panel underneath: Home */
+    .home { display: flex; flex-direction: column; align-items: center; justify-content: center; transition: filter .2s, opacity .2s; }
+    .home .clock { font-size: calc(var(--size) * .23); font-weight: 200; letter-spacing: -.02em; line-height: 1; }
+    .home .date { margin-top: 6px; font-size: calc(var(--size) * .045); color: var(--ink-dim); }
+    .home .wx { margin-top: 4px; font-size: calc(var(--size) * .042); color: var(--ink-dim); }
+    .home .wx b { color: var(--ink); font-weight: 500; }
+    .home.dim { filter: brightness(.45) blur(1px); }
+    .nav {
+        position: absolute; top: 10.5%; left: 50%; transform: translateX(-50%); height: calc(var(--size) * .07);
+        display: flex; align-items: center; gap: 8px; color: rgba(242, 244, 248, .45);
+    }
+    .nav .pill {
+        display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 7px; border-radius: 999px;
+        color: #fff; background: rgba(79, 140, 255, .16); box-shadow: inset 0 0 0 1px rgba(79, 140, 255, .6);
+        font-size: calc(var(--size) * .027); font-weight: 600; letter-spacing: .08em;
+    }
+    .nav svg { width: calc(var(--size) * .034); height: calc(var(--size) * .034); }
+    .ln { fill: none; stroke: currentColor; stroke-width: .55; stroke-linecap: round; stroke-linejoin: round; }
+    .fc { fill: currentColor; }
+
+    /* current alert */
+    .alert { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 14%; background: var(--screen);
+        box-shadow: inset 0 0 0 5px var(--amber), inset 0 0 26px rgba(245, 185, 66, .35); border-radius: 50%; }
+    .alert .top { position: absolute; top: 19.5%; left: 0; right: 0; font-size: calc(var(--size) * .03); letter-spacing: .14em; color: var(--ink-dim); font-weight: 600; }
+    .alert .t { font-size: calc(var(--size) * .085); line-height: 1.12; }
+    .alert .t.small { font-size: calc(var(--size) * .066); }
+    .alert .s { margin-top: 6px; font-size: calc(var(--size) * .045); color: var(--ink-dim); }
+    .chips { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
+    .chip { padding: 6px 13px; border-radius: 999px; font-size: calc(var(--size) * .04); color: var(--ink-dim); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); cursor: pointer; white-space: nowrap; }
+    .chip.sel { color: #fff; box-shadow: inset 0 0 0 2px var(--accent), 0 0 12px rgba(79, 140, 255, .35); }
+    .chip.sm { padding: 4px 10px; font-size: calc(var(--size) * .034); }
+
+    /* swipeable */
+    .sw { position: absolute; touch-action: none; cursor: grab; }
+    .sw .under { position: absolute; inset: 0; border-radius: inherit; display: flex; align-items: center; padding: 0 18px; font-weight: 600; font-size: calc(var(--size) * .04); opacity: 0; }
+    .sw .under.done { background: rgba(63, 207, 127, .22); color: var(--ok); justify-content: flex-start; }
+    .sw .under.snooze { background: rgba(139, 147, 163, .2); color: var(--ink-dim); justify-content: flex-end; }
+    .sw .face { position: relative; border-radius: inherit; height: 100%; }
+
+    /* B: full-screen card */
+    .full { inset: 0; border-radius: 50%; }
+    .full .under { padding: 0 5%; font-size: calc(var(--size) * .042); }
+    .sw .under.neutral { background: rgba(139, 147, 163, .18); color: var(--ink-dim); }
+    .cd { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
+    .screen .fade { transition: opacity .5s; opacity: 0; }
+    .demo { margin-top: 6px; font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--page-muted); cursor: pointer; }
+    .demo.on { border-color: var(--accent); color: var(--accent); }
+    .ttl { font-weight: 600; line-height: 1.15; }
+    .sub { color: var(--ink-dim); margin-top: 2px; }
+    .ico { flex: none; border-radius: 50%; display: grid; place-items: center; }
+    .full .face { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 15%; background: radial-gradient(circle at 50% 38%, #172030, #0b0d11 70%); border-radius: 50%; }
+    .full .big { width: calc(var(--size) * .24); height: calc(var(--size) * .24); border-radius: 50%; display: grid; place-items: center; margin-bottom: 10px; }
+    .full .big svg { width: 56%; height: 56%; }
+    .full .big .ln { stroke-width: .38; }
+    .full .ttl { font-size: calc(var(--size) * .08); font-weight: 500; }
+    .full .sub { font-size: calc(var(--size) * .042); max-width: 80%; }
+    .ringc { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
+    .dots { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+    .dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .2); }
+    .dots i.on { background: var(--ink); }
+
+    .toast {
+        position: absolute; left: 50%; top: 86%; transform: translate(-50%, -50%); padding: 6px 14px; border-radius: 999px;
+        font-size: calc(var(--size) * .045); font-weight: 600; background: rgba(255, 255, 255, .12); backdrop-filter: blur(6px); white-space: nowrap;
+    }
+    .toast.ok { background: rgba(63, 207, 127, .25); color: #c9f5dc; }
+    .toast.snz { background: rgba(245, 185, 66, .22); color: #fbe3b0; }
+    .caption-in { position: absolute; bottom: 16%; left: 15%; right: 15%; text-align: center; font-size: calc(var(--size) * .034); color: var(--ink-dim); }
+</style>
+</head>
+<body>
+    <h1>Reminders: current vs. option B</h1>
+    <p class="lead">Each device starts on Home with the reminder arriving. Pick a state with the tabs. On B, drag the screen either way, tap Dismiss, or press Enter (the knob); with several, scroll or use ↑ ↓ to step through them. B's ring counts down 30 seconds; the button under it switches to 6 seconds for trying it. Everything replays after a moment. Dropped: options A and C, snooze, Done, missed reminders and the tray section.</p>
+    <div class="grid" id="grid"></div>
+
+<script>
+(() => {
+    'use strict';
+    const SVG = {
+        stand: '<svg viewBox="-3 -3 6 6"><circle class="ln" cx="0" cy="-2" r=".55"/><path class="ln" d="M 0 -1.3 V 0.6 M -1.2 -0.6 L 0 -1 L 1.2 -0.6 M 0 0.6 L -0.8 2.3 M 0 0.6 L 0.8 2.3"/></svg>',
+        water: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -1.5 -2.1 L -1.1 2.1 H 1.1 L 1.5 -2.1 Z M -1.3 -0.5 H 1.3"/></svg>',
+        eyes: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -2.5 0 Q 0 -2.3 2.5 0 Q 0 2.3 -2.5 0 Z"/><circle class="ln" r=".8"/></svg>',
+        home: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -2 0 L 0 -1.9 L 2 0 M -1.4 -0.4 V 1.9 H 1.4 V -0.4"/></svg>',
+        world: '<svg viewBox="-3 -3 6 6"><circle class="ln" r="2.1"/><ellipse class="ln" rx="0.9" ry="2.1"/><path class="ln" d="M -2.1 0 H 2.1"/></svg>',
+        focus: '<svg viewBox="-3 -3 6 6"><circle class="ln" cx="0" cy="0.3" r="2.1"/><path class="ln" d="M 0 0.3 V -0.9 M -0.6 -2.5 H 0.6"/></svg>',
+        settings: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -2.1 -1.1 H 2.1 M -2.1 1.1 H 2.1"/><circle class="ln" cx="-0.7" cy="-1.1" r=".6" fill="#0d1016"/><circle class="ln" cx="0.9" cy="1.1" r=".6" fill="#0d1016"/></svg>',
+        timers: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -1.5 -2.1 H 1.5 M -1.5 2.1 H 1.5 M -1.1 -2.1 C -1.1 -0.6 1.1 0.6 1.1 2.1 M 1.1 -2.1 C 1.1 -0.6 -1.1 0.6 -1.1 2.1"/></svg>',
+    };
+    const R = {
+        stand: { title: 'Stand up', sub: 'Stretch your legs for a minute', color: '#3fcf7f', bg: 'rgba(63,207,127,.18)', phrase: 'stand up' },
+        water: { title: 'Drink some water', sub: 'A few sips counts', color: '#4f8cff', bg: 'rgba(79,140,255,.2)', phrase: 'drink some water' },
+        eyes: { title: 'Eye break', sub: 'Look 20 feet away for 20 seconds', color: '#a66bff', bg: 'rgba(166,107,255,.2)', phrase: 'rest your eyes' },
+    };
+    const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+    const ico = (k, cls = 'ico') => { const d = el('div', cls, SVG[k]); d.style.background = R[k].bg; d.style.color = R[k].color; return d; };
+
+    const homeLayer = (dim) => {
+        const h = el('div', `layer home ${dim ? 'dim' : ''}`);
+        h.append(el('div', 'clock', '10:42'), el('div', 'date', 'Monday, Nov 9'), el('div', 'wx', '<b>78° Clear</b> · H 84 L 61'));
+        return h;
+    };
+    const navLayer = () => {
+        const n = el('div', 'nav');
+        n.innerHTML = `${SVG.settings}<span class="pill">${SVG.home}HOME</span>${SVG.world}`;
+        return n;
+    };
+
+    // A horizontally swipeable element: right = Done, left = Snooze. `face` is its content.
+    const swipeable = (cls, face, onAct, opts = {}) => {
+        const w = el('div', `sw ${cls}`);
+        const ud = el('div', `under done ${opts.neutral ? 'neutral' : ''}`, opts.doneLabel || '✓ Done');
+        const us = el('div', `under snooze ${opts.neutral ? 'neutral' : ''}`, opts.snoozeLabel || 'Snooze 10 min ⏱');
+        face.classList.add('face');
+        w.append(ud, us, face);
+        let x0 = null, dx = 0, moved = false;
+        const set = (x, anim) => {
+            face.style.transition = anim ? 'transform .22s ease-out' : 'none';
+            face.style.transform = `translateX(${x}px)${opts.tilt ? ` rotate(${x / 40}deg)` : ''}`;
+            const k = Math.min(1, Math.abs(x) / 80);
+            ud.style.opacity = x > 0 ? k : 0;
+            us.style.opacity = x < 0 ? k : 0;
+        };
+        w.addEventListener('pointerdown', (e) => { if (e.target.closest('.chip')) return; x0 = e.clientX; dx = 0; moved = false; w.setPointerCapture(e.pointerId); });
+        w.addEventListener('pointermove', (e) => { if (x0 == null) return; dx = e.clientX - x0; if (Math.abs(dx) > 6) moved = true; set(dx, false); });
+        const end = () => {
+            if (x0 == null) return;
+            x0 = null;
+            const W = w.clientWidth;
+            if (Math.abs(dx) > W * 0.3) {
+                set(Math.sign(dx) * (W + 60), true);
+                setTimeout(() => onAct(dx > 0 ? 'done' : 'dismiss'), 200);
+            } else {
+                set(0, true);
+                if (!moved && opts.onTap) opts.onTap();
+            }
+        };
+        w.addEventListener('pointerup', end);
+        w.addEventListener('pointercancel', end);
+        return w;
+    };
+
+    const toast = (screen, text, kind) => { const t = el('div', `toast ${kind || ''}`, text); screen.appendChild(t); };
+
+    // ---------- the options ----------
+    const STATES = [['one', 'One arrives'], ['several', 'Several at once']];
+
+    const OPTIONS = [
+        {
+            key: 'cur', title: 'Current (on the device now)', tag: 'Full-screen amber alert with Done and Snooze chips.',
+            notes: {
+                one: 'Takes the whole screen; the LED blinks. Tap a chip, or turn the knob to pick one and press.',
+                several: 'Merged into one alert; the tips are dropped to fit.',
+            },
+            bullets: ['<b>Touch:</b> tap Done or Snooze.', '<b>Knob:</b> turn to pick a chip, press to answer.', '<b>Unanswered:</b> goes away after 10 minutes.', '<b>Feel:</b> generic amber alert; several merge into one long title; no swipe.'],
+            render(ctx) {
+                const s = ctx.screen;
+                const list = ctx.state === 'several' ? ['stand', 'water', 'eyes'] : ['water'];
+                const a = el('div', 'layer alert');
+                a.appendChild(el('div', 'top', 'REMINDER'));
+                if (list.length === 1) a.append(el('div', 't', R.water.title), el('div', 's', R.water.sub));
+                else a.append(el('div', 't small', 'Stand up, drink some water and rest your eyes'));
+                const ch = el('div', 'chips');
+                const d = el('span', 'chip sel', 'Done'), z = el('span', 'chip', 'Snooze 10 min');
+                d.onclick = () => ctx.act('done'); z.onclick = () => ctx.act('snooze');
+                ch.append(d, z);
+                a.appendChild(ch);
+                s.appendChild(a);
+            },
+        },
+        {
+            key: 'b', title: 'B. Full-screen card (updated)', autoMs: 30000,
+            tag: 'Big icon and words, readable from across the desk. One action: dismiss. No snooze or counting; another one is always coming.',
+            notes: {
+                one: 'Swipe either way, tap Dismiss, or press the knob. The color ring runs down over 30 seconds, then it goes away by itself.',
+                several: 'One card each, with dots; turn the knob (scroll or arrow keys here) to step through them. Dismiss them one by one; one 30-second countdown covers the set.',
+            },
+            bullets: [
+                '<b>Touch:</b> swipe the screen left or right, or tap Dismiss.',
+                '<b>Knob:</b> press = dismiss (Enter here). Several: turn to step through them.',
+                '<b>Unanswered:</b> the ring around the edge drains smoothly over 30 seconds, then the card fades away. Nothing is kept; the next one comes at its usual time.',
+                '<b>Look:</b> each reminder has its own color and icon (stand green, water blue, eyes purple), so you know which one from across the room.',
+            ],
+            render(ctx) {
+                const s = ctx.screen;
+                s.append(homeLayer());
+                const list = ctx.pending;
+                if (!list.length) return;
+                ctx.idx = Math.min(ctx.idx || 0, list.length - 1);
+                const k = list[ctx.idx];
+                const f = el('div');
+                f.append(ico(k, 'big'), el('div', 'ttl', R[k].title), el('div', 'sub', R[k].sub));
+                if (list.length > 1) { const d = el('div', 'dots'); list.forEach((_, i) => d.appendChild(el('i', i === ctx.idx ? 'on' : ''))); f.appendChild(d); }
+                const ch = el('div', 'chips');
+                const x = el('span', 'chip sel', 'Dismiss');
+                x.onclick = () => ctx.act('dismiss', k);
+                ch.append(x);
+                f.appendChild(ch);
+                const card = swipeable('full', f, () => ctx.act('dismiss', k), { doneLabel: 'Dismiss', snoozeLabel: 'Dismiss', neutral: true });
+                // Soft inner glow in the reminder's color, plus the countdown ring: a full circle
+                // at the edge that drains clockwise from the top until it's gone.
+                const glow = el('div', 'ringc');
+                glow.style.boxShadow = `inset 0 0 30px ${R[k].bg}`;
+                card.appendChild(glow);
+                const S = s.clientWidth || 340;
+                const r = S / 2 - 3, C = 2 * Math.PI * r;
+                const ns = 'http://www.w3.org/2000/svg';
+                const svg = document.createElementNS(ns, 'svg');
+                svg.setAttribute('class', 'cd');
+                svg.setAttribute('viewBox', `0 0 ${S} ${S}`);
+                const track = document.createElementNS(ns, 'circle');
+                const arc = document.createElementNS(ns, 'circle');
+                for (const c of [track, arc]) { c.setAttribute('cx', S / 2); c.setAttribute('cy', S / 2); c.setAttribute('r', r); c.setAttribute('fill', 'none'); c.setAttribute('stroke-width', 5); }
+                track.setAttribute('stroke', 'rgba(255,255,255,.06)');
+                arc.setAttribute('stroke', R[k].color);
+                arc.setAttribute('stroke-linecap', 'round');
+                arc.setAttribute('stroke-dasharray', C);
+                arc.style.filter = `drop-shadow(0 0 6px ${R[k].color})`;
+                svg.append(track, arc);
+                card.appendChild(svg);
+                const left = Math.max(0, ctx.deadline - performance.now());
+                const frac = left / ctx.total;   // 1 = full ring
+                arc.animate([{ strokeDashoffset: C * (1 - frac) }, { strokeDashoffset: C }], { duration: left, easing: 'linear', fill: 'forwards' });
+                s.appendChild(card);
+            },
+            rotate(ctx, dir) { ctx.idx = Math.max(0, Math.min(ctx.pending.length - 1, (ctx.idx || 0) + dir)); },
+            press(ctx) { if (ctx.pending.length) ctx.act('dismiss', ctx.pending[ctx.idx || 0]); },
+        },
+    ];
+
+    // ---------- one device per option ----------
+    const makeCard = (opt) => {
+        const card = el('section', 'card');
+        card.append(el('h2', null, opt.title), el('p', 'tag', opt.tag));
+        const tabs = el('div', 'tabs');
+        const device = el('div', 'device');
+        device.tabIndex = 0;
+        const screen = el('div', 'screen');
+        device.appendChild(screen);
+        const note = el('div', 'note');
+        const ul = el('ul');
+        opt.bullets.forEach((b) => ul.appendChild(el('li', null, b)));
+        card.append(tabs, device, note);
+        let demoBtn = null;
+        if (opt.autoMs) {
+            demoBtn = el('button', 'demo', 'Use a 6-second countdown');
+            card.appendChild(demoBtn);
+        }
+        card.appendChild(ul);
+
+        const ctx = { state: 'one', pending: [], idx: 0, screen };
+        const initial = (st) => (st === 'one' ? ['water'] : ['stand', 'water', 'eyes']);
+        const draw = () => {
+            screen.replaceChildren();
+            opt.render(ctx);
+            note.textContent = opt.notes[ctx.state] || '';
+            [...tabs.children].forEach((b) => b.classList.toggle('on', b.dataset.s === ctx.state));
+        };
+        let resetTimer = null, autoTimer = null;
+        ctx.demo = false;
+        ctx.go = (st) => {
+            clearTimeout(resetTimer);
+            clearTimeout(autoTimer);
+            ctx.state = st;
+            ctx.pending = initial(st);
+            ctx.idx = 0;
+            if (opt.autoMs) {
+                // One countdown for whatever is on screen; when it runs out, it all fades away.
+                ctx.total = ctx.demo ? 6000 : opt.autoMs;
+                ctx.deadline = performance.now() + ctx.total;
+                autoTimer = setTimeout(() => {
+                    const c = screen.querySelector('.sw');
+                    if (c) c.classList.add('fade');
+                    setTimeout(() => { ctx.pending = []; draw(); resetTimer = setTimeout(() => ctx.go(st), 1500); }, 500);
+                }, ctx.total);
+            }
+            draw();
+        };
+        if (demoBtn) demoBtn.onclick = () => { ctx.demo = !ctx.demo; demoBtn.classList.toggle('on', ctx.demo); demoBtn.textContent = ctx.demo ? 'Using a 6-second countdown' : 'Use a 6-second countdown'; ctx.go(ctx.state); };
+        ctx.act = (a, k) => {
+            if (opt.key === 'cur' || k == null) ctx.pending = [];
+            else ctx.pending = ctx.pending.filter((x) => x !== k);
+            draw();
+            const left = ctx.pending.length;
+            if (a === 'dismiss') { if (left) toast(screen, `${left} left`); }   // dismissing needs no confirmation
+            else { const word = a === 'done' ? 'Done' : 'Snoozed 10 min'; toast(screen, left ? `${word} · ${left} left` : word, a === 'done' ? 'ok' : 'snz'); }
+            clearTimeout(resetTimer);
+            const st = ctx.state;
+            if (!ctx.pending.length) clearTimeout(autoTimer);
+            resetTimer = setTimeout(() => { if (!ctx.pending.length) ctx.go(st); else draw(); }, 1300);
+        };
+        STATES.forEach(([k, label]) => {
+            const b = el('button', null, label);
+            b.dataset.s = k;
+            b.onclick = () => ctx.go(k);
+            tabs.appendChild(b);
+        });
+        const rot = (dir) => { if (opt.rotate && ctx.pending.length > 1) { opt.rotate(ctx, dir); draw(); } };
+        device.addEventListener('wheel', (e) => { if (!opt.rotate) return; e.preventDefault(); if (Math.abs(e.deltaY) > 20) rot(Math.sign(e.deltaY)); }, { passive: false });
+        device.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); rot(1); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); rot(-1); }
+            if (e.key === 'Enter' && opt.press) { e.preventDefault(); opt.press(ctx); }
+        });
+        ctx.go('one');
+        return card;
+    };
+
+    const grid = document.getElementById('grid');
+    OPTIONS.forEach((o) => grid.appendChild(makeCard(o)));
+})();
+</script>
+</body>
+</html>

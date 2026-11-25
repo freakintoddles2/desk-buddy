@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel nav options</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --accent: #4f8cff; --today: #f5b942;
+        --size: 300px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1180px; }
+    .lead { color: var(--page-muted); margin: 0 auto 24px; max-width: 1180px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; max-width: 1180px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .card h2 { font-size: 15px; margin: 4px 0 0; align-self: flex-start; }
+    .card p { margin: 0; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .card ul { margin: 0; padding-left: 18px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .ctl { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .ctl button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--page-text); cursor: pointer; }
+    .ctl button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .device {
+        width: calc(var(--size) + 26px); height: calc(var(--size) + 26px); border-radius: 50%;
+        background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f;
+        display: grid; place-items: center;
+    }
+    .screen {
+        position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden;
+        background: var(--screen); color: var(--ink); box-shadow: inset 0 0 0 3px #000; user-select: none;
+    }
+
+    /* nav strip, from display.html */
+    .panel-nav {
+        position: absolute; top: 9.5%; left: 50%; transform: translateX(-50%); z-index: 3;
+        width: calc(var(--size) * .58); height: calc(var(--size) * .08); overflow: hidden;
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+        mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+    }
+    .pn-track { position: absolute; left: 0; top: 50%; translate: 0 -50%; display: flex; align-items: center; gap: calc(var(--size) * .022); white-space: nowrap; transition: transform .25s ease-out; }
+    .pn {
+        position: relative; display: inline-flex; align-items: center; gap: calc(var(--size) * .01);
+        height: calc(var(--size) * .067); padding: 0 calc(var(--size) * .01); border-radius: 999px;
+        color: rgba(242, 244, 248, .45);
+        font-size: calc(var(--size) * .034); font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    }
+    .pn svg { width: calc(var(--size) * .05); height: calc(var(--size) * .05); flex: none; }
+    .ln { fill: none; stroke: currentColor; stroke-width: .55; stroke-linecap: round; stroke-linejoin: round; }
+    .knob { fill: var(--screen); }
+    .face { fill: currentColor; }
+    .pn .lbl { display: none; }
+    .pn.on { color: #fff; padding: 0 calc(var(--size) * .022) 0 calc(var(--size) * .014); background: rgba(79, 140, 255, .16); box-shadow: inset 0 0 0 1px rgba(79, 140, 255, .6), 0 0 12px rgba(79, 140, 255, .3); }
+    .pn.on .knob { fill: #17213a; }
+    .pn.on .lbl { display: inline; }
+    .pn .new { position: absolute; top: 1px; right: -1px; width: 5px; height: 5px; border-radius: 50%; background: var(--today); }
+
+    /* B: icons only. The current icon is bigger and white with a soft blue glow; no pill, no word. */
+    .b .pn.on { padding: 0 calc(var(--size) * .006); background: none; box-shadow: none; filter: drop-shadow(0 0 6px rgba(79, 140, 255, .85)); }
+    .b .pn.on svg { width: calc(var(--size) * .066); height: calc(var(--size) * .066); }
+    .b .pn.on .lbl { display: none; }
+    .b .pn.on .knob { fill: var(--screen); }
+    .b .pn .new { display: block; }
+    .b .pn.on .new { display: none; }
+
+    /* C: no strip */
+    .c .panel-nav { display: none; }
+
+    /* panel content */
+    .content { position: absolute; inset: 0; }
+    .clock { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font-size: calc(var(--size) * .25); font-weight: 400; letter-spacing: -.01em; line-height: 1; }
+    .date { position: absolute; left: 0; right: 0; top: 60%; text-align: center; color: var(--ink-dim); font-size: calc(var(--size) * .055); }
+    .wx { position: absolute; left: 0; right: 0; top: 68%; text-align: center; font-size: calc(var(--size) * .045); }
+    .ring { position: absolute; inset: 3%; border-radius: 50%; border: calc(var(--size) * .012) solid transparent;
+            background: conic-gradient(from 180deg, #1b1d4a, #2a2458 25%, #e98a6a 32%, #5ea9ea 45%, #5aa2e4 55%, #f19a5c 62%, #4a2a6e 72%, #1b1d4a) border-box;
+            -webkit-mask: linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0); opacity: .75; }
+    .sunball { position: absolute; left: 30%; top: 4.5%; width: 7%; height: 7%; border-radius: 50%; background: #ffc34d; box-shadow: 0 0 18px 6px rgba(255, 195, 77, .45); }
+
+    .rows { position: absolute; left: 0; right: 0; top: 27%; display: flex; flex-direction: column; align-items: center; gap: calc(var(--size) * .02); }
+    .row { width: 84%; display: flex; justify-content: space-between; align-items: center; padding: 0 6%; color: rgba(242, 244, 248, .7); font-size: calc(var(--size) * .047); }
+    .row .v { color: var(--ink-dim); font-size: .85em; }
+    .row.sel { padding: calc(var(--size) * .025) 6%; border-radius: 999px; box-shadow: inset 0 0 0 1.5px var(--accent); color: #fff; font-size: calc(var(--size) * .055); }
+    .row.sel .sub { display: block; color: var(--ink-dim); font-size: .62em; }
+    .row.far { opacity: .45; font-size: calc(var(--size) * .042); width: 74%; }
+    .count { position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; color: var(--ink-dim); font-size: calc(var(--size) * .04); }
+
+    .focus-dial { position: absolute; inset: 4%; border-radius: 50%; border: calc(var(--size) * .014) solid rgba(255, 255, 255, .1); }
+    .focus-dial::after { content: ''; position: absolute; inset: calc(var(--size) * -.014); border-radius: 50%; border: calc(var(--size) * .014) solid var(--accent); clip-path: polygon(50% 50%, 50% 0, 100% 0, 100% 100%, 50% 100%); }
+    .focus-cap { position: absolute; left: 0; right: 0; top: 33%; text-align: center; color: var(--ink-dim); font-size: calc(var(--size) * .038); letter-spacing: .18em; }
+    .focus-time { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-size: calc(var(--size) * .2); line-height: 1; }
+</style>
+</head>
+<body>
+<h1>Panel nav: current vs. two options</h1>
+<p class="lead">Each device shows the same panel. Pick a panel under each device, or use the left and right arrow keys to swipe all three. The fast travel tray (pull down from the top edge) is the same in every option, so it isn't drawn.</p>
+
+<div class="grid">
+    <div class="card">
+        <h2>Now: pill with the panel name</h2>
+        <div class="device"><div class="screen a" data-opt="a"></div></div>
+        <div class="ctl" data-for="a"></div>
+        <p>For reference. On list panels (Settings, Habits, Days, Play) the pill also works as the screen's title.</p>
+    </div>
+    <div class="card">
+        <h2>B: icons only</h2>
+        <div class="device"><div class="screen b" data-opt="b"></div></div>
+        <div class="ctl" data-for="b"></div>
+        <ul>
+            <li>Same strip, no word. The current icon is larger and white with a blue glow; neighbours stay faint.</li>
+            <li>Keeps the "where am I, what's next door" hint and the running dots (yellow = a timer is going).</li>
+            <li>List panels lose their written title; the icon has to carry it.</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>C: gone</h2>
+        <div class="device"><div class="screen c" data-opt="c"></div></div>
+        <div class="ctl" data-for="c"></div>
+        <ul>
+            <li>Cleanest; the strip's band at the top is free (Home's sun no longer collides with the strip at midday).</li>
+            <li>Lists have no title at all, and the running dots go away (the Home glance row still shows a running focus or timer).</li>
+            <li>Nothing hints that more panels exist; new people find them by swiping or by the tray.</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+(() => {
+    const ICONS = {
+        home: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -2 0 L 0 -1.9 L 2 0 M -1.4 -0.4 V 1.9 H 1.4 V -0.4"/></svg>',
+        world: '<svg viewBox="-3 -3 6 6"><circle class="ln" r="2.1"/><ellipse class="ln" rx="0.9" ry="2.1"/><path class="ln" d="M -2.1 0 H 2.1"/></svg>',
+        weather: '<svg viewBox="-3 -3 6 6"><circle class="ln" cx="-0.6" cy="-0.6" r="1.1"/><path class="ln" d="M -0.6 -2.5 V -2.1 M -2.5 -0.6 H -2.1 M -1.95 -1.95 L -1.7 -1.7 M 0.75 -1.95 L 0.5 -1.7 M -1.5 2 H 1.5 A 1.1 1.1 0 0 0 1.4 -0.1 A 1.5 1.5 0 0 0 -1.3 0.4 A 0.8 0.8 0 0 0 -1.5 2 Z"/></svg>',
+        focus: '<svg viewBox="-3 -3 6 6"><circle class="ln" cx="0" cy="0.3" r="2.1"/><path class="ln" d="M 0 0.3 V -0.9 M -0.6 -2.5 H 0.6"/></svg>',
+        timers: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -1.5 -2.1 H 1.5 M -1.5 2.1 H 1.5 M -1.1 -2.1 C -1.1 -0.6 1.1 0.6 1.1 2.1 M 1.1 -2.1 C 1.1 -0.6 -1.1 0.6 -1.1 2.1"/></svg>',
+        breathe: '<svg viewBox="-3 -3 6 6"><circle class="ln" r="2.1"/><circle class="ln" r="0.9"/></svg>',
+        habits: '<svg viewBox="-3 -3 6 6"><rect class="ln" x="-2" y="-2" width="4" height="4" rx=".9"/><path class="ln" d="M -0.9 0 L -0.2 0.8 L 1 -0.7"/></svg>',
+        countdowns: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -1.4 2.2 V -2 H 1.7 L 0.9 -1 L 1.7 0 H -1.4"/></svg>',
+        play: '<svg viewBox="-3 -3 6 6"><rect class="ln" x="-2" y="-2" width="4" height="4" rx="1"/><circle class="face" cx="-0.85" cy="-0.85" r=".38"/><circle class="face" cx="0.85" cy="0.85" r=".38"/><circle class="face" r=".38"/></svg>',
+        settings: '<svg viewBox="-3 -3 6 6"><path class="ln" d="M -2.1 -1.1 H 2.1 M -2.1 1.1 H 2.1"/><circle class="ln knob" cx="-0.7" cy="-1.1" r=".6"/><circle class="ln knob" cx="0.9" cy="1.1" r=".6"/></svg>',
+    };
+    const NAMES = { home: 'Home', world: 'World', weather: 'Weather', focus: 'Focus', timers: 'Timers', breathe: 'Breathe', habits: 'Habits', countdowns: 'Days', play: 'Play', settings: 'Settings' };
+    const PANELS = Object.keys(NAMES);
+    const SHOWN = ['home', 'focus', 'timers', 'habits', 'settings'];   // the panels with sample content
+    const running = { timers: true };   // a timer is going: its icon carries a dot
+
+    const list = (rows, n, total) => `<div class="rows">${rows.map((r, i) =>
+        `<div class="row ${r.sel ? 'sel' : i === 0 || i === rows.length - 1 ? 'far' : ''}"><span>${r.t}${r.sel && r.s ? `<span class="sub">${r.s}</span>` : ''}</span><span class="v">${r.v}</span></div>`).join('')}</div>
+        <div class="count">${n} / ${total}</div>`;
+    const CONTENT = {
+        home: () => `<div class="ring"></div><div class="sunball"></div><div class="clock">10:58</div><div class="date">Tuesday, Nov 10</div><div class="wx">73° Clear · H 84 L 57</div>`,
+        focus: () => `<div class="focus-dial"></div><div class="focus-cap">FOCUS</div><div class="focus-time">25:00</div>`,
+        timers: () => list([{ t: 'Stopwatch', v: '0:00' }, { t: 'Tea', v: '3:12', s: 'Running', sel: true }, { t: 'Laundry', v: '42 min' }, { t: 'New timer', v: '' }], 2, 4),
+        habits: () => list([{ t: 'Walk', v: '✓' }, { t: 'Water', v: '3 / 8', s: 'Tap to add one', sel: true }, { t: 'Read', v: '' }, { t: 'Stretch', v: '' }], 2, 4),
+        settings: () => list([{ t: 'Brightness', v: '80%' }, { t: 'Auto brightness', v: 'On', s: 'Wake 6:00 AM, bed 10:00 PM', sel: true }, { t: 'Stand-up reminder', v: 'Off' }, { t: 'Water reminder', v: '30 min' }], 6, 13),
+    };
+
+    const state = { a: 'home', b: 'home', c: 'home' };
+    const navHtml = (cur) => `<div class="panel-nav"><div class="pn-track">${PANELS.map((p) =>
+        `<span class="pn ${p === cur ? 'on' : ''}" data-p="${p}">${ICONS[p]}<span class="lbl">${NAMES[p]}</span>${running[p] ? '<i class="new"></i>' : ''}</span>`).join('')}</div></div>`;
+
+    const render = (opt) => {
+        const scr = document.querySelector(`.screen[data-opt="${opt}"]`);
+        const cur = state[opt];
+        scr.innerHTML = navHtml(cur) + `<div class="content">${CONTENT[cur]()}</div>`;
+        const nav = scr.querySelector('.panel-nav'), on = scr.querySelector('.pn.on');
+        if (on && getComputedStyle(nav).display !== 'none') {
+            const track = nav.firstElementChild;
+            track.style.transition = 'none';
+            track.style.transform = `translateX(${nav.clientWidth / 2 - (on.offsetLeft + on.offsetWidth / 2)}px)`;
+        }
+        const ctl = document.querySelector(`.ctl[data-for="${opt}"]`);
+        ctl.innerHTML = SHOWN.map((p) => `<button class="${p === cur ? 'on' : ''}" data-p="${p}">${NAMES[p]}</button>`).join('');
+    };
+    document.addEventListener('click', (e) => {
+        const b = e.target.closest('.ctl button');
+        if (!b) return;
+        const opt = b.parentElement.dataset.for;
+        state[opt] = b.dataset.p;
+        render(opt);
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        for (const opt of Object.keys(state)) {
+            const i = SHOWN.indexOf(state[opt]);
+            state[opt] = SHOWN[Math.max(0, Math.min(SHOWN.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))];
+            render(opt);
+        }
+    });
+    Object.keys(state).forEach(render);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home time zones</title>
+<link rel="icon" href="data:,">
+<style>
+    :root {
+        --page: #eef0f3; --page-text: #1d2330; --page-muted: #667085; --card: #fff; --border: #d9dde5;
+        --screen: #0b0d11; --ink: #f2f4f8; --ink-dim: #8b93a3; --ink-faint: #4a505c;
+        --accent: #4f8cff; --today: #f5b942; --ok: #3fcf7f;
+        --size: 340px;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root { --page: #101216; --page-text: #e6e9ef; --page-muted: #98a2b3; --card: #1a1d23; --border: #2c313b; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--page-text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 28px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 auto 4px; max-width: 1180px; }
+    .lead { color: var(--page-muted); margin: 0 auto 24px; max-width: 1180px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr)); gap: 20px; max-width: 1180px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .card h2 { font-size: 15px; margin: 14px 0 4px; align-self: flex-start; }
+    .card p { margin: 0 0 6px; color: var(--page-muted); font-size: 13px; align-self: flex-start; }
+    .card ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; color: var(--page-muted); align-self: flex-start; }
+    .card li b { color: var(--page-text); font-weight: 600; }
+
+    .device {
+        width: calc(var(--size) + 28px); height: calc(var(--size) + 28px); border-radius: 50%;
+        background: repeating-conic-gradient(#3a3f48 0 2deg, #2a2e35 2deg 4deg);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .3), inset 0 0 0 2px #50565f;
+        display: grid; place-items: center;
+    }
+    .screen {
+        position: relative; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden;
+        background: radial-gradient(circle at 50% 35%, #161a22, var(--screen) 70%); color: var(--ink);
+        box-shadow: inset 0 0 0 3px #000;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    }
+    .nav { position: absolute; top: 10.5%; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; }
+    .nav .pill { padding: 2px 9px; border-radius: 999px; font-size: 9px; font-weight: 700; letter-spacing: .08em; color: #fff; background: rgba(79, 140, 255, .16); box-shadow: inset 0 0 0 1px rgba(79, 140, 255, .6); }
+    .nav i { width: 9px; height: 9px; border-radius: 3px; border: 1.2px solid rgba(242, 244, 248, .4); }
+    .nav i:first-child, .nav i:last-child { opacity: .35; }
+    .clock { font-size: calc(var(--size) * .2); font-weight: 300; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .clock.sm { font-size: calc(var(--size) * .17); }
+    .date { margin-top: 5px; font-size: calc(var(--size) * .036); color: var(--ink-dim); }
+    .weather { margin-top: 3px; font-size: calc(var(--size) * .032); color: var(--ink-dim); }
+    .weather b { color: var(--ink); font-weight: 600; }
+    .stats { display: flex; gap: calc(var(--size) * .045); margin-top: calc(var(--size) * .045); }
+    .stat .v { font-size: calc(var(--size) * .075); font-weight: 600; line-height: 1.05; font-variant-numeric: tabular-nums; }
+    .stat .l { font-size: calc(var(--size) * .027); color: var(--ink-dim); text-transform: uppercase; letter-spacing: .1em; }
+    .stat.sel { position: relative; padding-bottom: 8px; }
+    .stat.sel::after { content: ''; position: absolute; left: 22%; right: 22%; bottom: 0; height: 2px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 10px 1px rgba(79, 140, 255, .75); }
+    .stat.city .v { color: #c9d3ff; }
+
+    /* A: city line */
+    .cities { display: flex; gap: calc(var(--size) * .035); margin-top: calc(var(--size) * .03); font-size: calc(var(--size) * .034); font-variant-numeric: tabular-nums; }
+    .cities span { color: var(--ink); font-weight: 500; }
+    .cities em { font-style: normal; color: var(--ink-dim); font-weight: 600; letter-spacing: .06em; font-size: .85em; margin-right: 4px; }
+    .cities sup { color: var(--today); font-size: .65em; margin-left: 1px; }
+    .cities .night span { color: #b7b0ff; }
+
+    /* B: cycling city */
+    .cycle { margin-top: calc(var(--size) * .03); height: 1.5em; font-size: calc(var(--size) * .036); position: relative; width: 80%; }
+    .cycle div { position: absolute; inset: 0; opacity: 0; transition: opacity .6s, transform .6s; transform: translateY(6px); }
+    .cycle div.on { opacity: 1; transform: none; }
+    .cycle b { font-weight: 600; }
+    .cycle .d { color: var(--ink-dim); }
+    .dots { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
+    .dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-faint); }
+    .dots i.on { background: var(--ink-dim); }
+
+    /* D: 24-hour ring */
+    .ring { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .ring text { font: 600 3.2px -apple-system, sans-serif; letter-spacing: .1px; }
+
+    .rec { margin-top: 10px; font-size: 11px; font-weight: 700; color: var(--accent); align-self: flex-start; text-transform: uppercase; letter-spacing: .08em; }
+</style>
+</head>
+<body>
+    <h1>Home time zones: options</h1>
+    <p class="lead">The same Home screen with weather on, three cities chosen for Home (New York, London, Sydney), and live times. Each card says what changes and what it costs.</p>
+    <div class="grid" id="grid"></div>
+
+<script>
+(() => {
+    'use strict';
+    const CITIES = [
+        { code: 'NYC', name: 'New York', tz: 'America/New_York' },
+        { code: 'LON', name: 'London', tz: 'Europe/London' },
+        { code: 'SYD', name: 'Sydney', tz: 'Australia/Sydney' },
+    ];
+    const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+    const fmt = (d, tz, opts) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', ...(tz ? { timeZone: tz } : {}), ...opts });
+    const parts = (d, tz) => {
+        const p = {};
+        new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(d).forEach((x) => { p[x.type] = Number(x.value); });
+        return p;
+    };
+    const info = (c) => {
+        const d = new Date();
+        const p = parts(d, c.tz);
+        const dayDiff = Math.round((Date.UTC(p.year, p.month - 1, p.day) - Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+        const hour = p.hour + p.minute / 60;
+        return { ...c, time: fmt(d, c.tz).replace(/\s?[AP]M$/i, ''), full: fmt(d, c.tz), ampm: /PM/i.test(fmt(d, c.tz)) ? 'PM' : 'AM', dayDiff, hour, night: hour < 7 || hour >= 19 };
+    };
+
+    const base = (opts = {}) => {
+        const d = new Date();
+        const s = el('div', 'screen');
+        s.appendChild(el('div', 'nav', '<i></i><i></i><span class="pill">HOME</span><i></i><i></i>'));
+        s.appendChild(el('div', `clock ${opts.smallClock ? 'sm' : ''}`, fmt(d).replace(/\s?[AP]M$/i, '')));
+        s.appendChild(el('div', 'date', d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })));
+        s.appendChild(el('div', 'weather', '<b>75° Clear</b> · H 84 L 61 · Rain Sun'));
+        return s;
+    };
+    const stats = (list) => {
+        const row = el('div', 'stats');
+        list.forEach((x, i) => row.appendChild(el('div', `stat ${i === 0 ? 'sel' : ''} ${x.cls || ''}`, `<div class="v">${x.v}</div><div class="l">${x.l}</div>`)));
+        return row;
+    };
+    const STATS = [{ v: '2/3', l: 'Habits' }, { v: '24d', l: 'Vacation' }];
+    const device = (screen) => { const d = el('div', 'device'); d.appendChild(screen); return d; };
+    const card = (title, desc, pros, cons, screen, rec) => {
+        const c = el('div', 'card');
+        c.appendChild(device(screen));
+        if (rec) c.appendChild(el('div', 'rec', 'Recommended'));
+        c.appendChild(el('h2', '', title));
+        c.appendChild(el('p', '', desc));
+        const ul = el('ul');
+        pros.forEach((t) => ul.appendChild(el('li', '', `<b>Good:</b> ${t}`)));
+        cons.forEach((t) => ul.appendChild(el('li', '', `<b>Cost:</b> ${t}`)));
+        c.appendChild(ul);
+        return c;
+    };
+    const cityLine = () => {
+        const row = el('div', 'cities');
+        CITIES.map(info).forEach((c) => {
+            const day = c.dayDiff ? `<sup>${c.dayDiff > 0 ? '+1' : '−1'}</sup>` : '';
+            row.appendChild(el('div', c.night ? 'night' : '', `<em>${c.code}</em><span>${c.time}</span>${day}`));
+        });
+        return row;
+    };
+
+    // ---------- A: city line under the weather ----------
+    const a = base();
+    a.appendChild(cityLine());
+    a.appendChild(stats(STATS));
+
+    // ---------- B: one city at a time ----------
+    const b = base();
+    const cyc = el('div', 'cycle');
+    const dots = el('div', 'dots');
+    CITIES.map(info).forEach((c, i) => {
+        const when = c.dayDiff > 0 ? 'tomorrow' : c.dayDiff < 0 ? 'yesterday' : 'today';
+        cyc.appendChild(el('div', i === 0 ? 'on' : '', `<b>${c.name}</b> ${c.full} <span class="d">${when}</span>`));
+        dots.appendChild(el('i', i === 0 ? 'on' : ''));
+    });
+    b.appendChild(cyc);
+    b.appendChild(dots);
+    b.appendChild(stats(STATS));
+    let k = 0;
+    setInterval(() => {
+        k = (k + 1) % CITIES.length;
+        [...cyc.children].forEach((n, i) => n.classList.toggle('on', i === k));
+        [...dots.children].forEach((n, i) => n.classList.toggle('on', i === k));
+    }, 3000);
+
+    // ---------- C: a city takes a stat slot ----------
+    const c = base();
+    const lon = info(CITIES[1]);
+    c.appendChild(stats([...STATS, { v: lon.time, l: `London${lon.dayDiff > 0 ? ' +1' : ''}`, cls: 'city' }]));
+
+    // ---------- D: 24-hour ring around the edge ----------
+    // Noon at the top, midnight at the bottom; the night half (7 PM to 7 AM) is shaded.
+    const ringSvg = () => {
+        const NS = 'http://www.w3.org/2000/svg';
+        const mk = (tag, attrs, text) => { const n = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k2, v]) => n.setAttribute(k2, v)); if (text) n.textContent = text; return n; };
+        const s = mk('svg', { class: 'ring', viewBox: '0 0 100 100' });
+        const R = 46.6;
+        const ang = (h) => ((h - 12) / 24) * 360;       // degrees clockwise from the top
+        const pt = (deg, r) => [50 + r * Math.sin(deg * Math.PI / 180), 50 - r * Math.cos(deg * Math.PI / 180)];
+        s.appendChild(mk('circle', { cx: 50, cy: 50, r: R, fill: 'none', stroke: 'rgba(245,185,66,.28)', 'stroke-width': 2.2 }));
+        // night arc from 19:00 clockwise through midnight to 07:00
+        const [x1, y1] = pt(ang(19), R);
+        const [x2, y2] = pt(ang(31), R);
+        s.appendChild(mk('path', { d: `M${x1} ${y1} A${R} ${R} 0 0 1 ${x2} ${y2}`, fill: 'none', stroke: 'rgba(120,110,230,.55)', 'stroke-width': 2.2 }));
+        const cityHours = CITIES.map((ci) => info(ci).hour);
+        const near = (h) => cityHours.some((ch) => Math.min(Math.abs(ch - h), 24 - Math.abs(ch - h)) < 1.6);
+        for (let h = 0; h < 24; h += 6) {
+            if (near(h) || h === 12) continue;   // keep hour marks clear of city dots and the nav
+            const [tx, ty] = pt(ang(h), R - 4.2);
+            s.appendChild(mk('text', { x: tx, y: ty + 1.1, 'text-anchor': 'middle', fill: 'rgba(139,147,163,.7)', style: 'font-weight:500;font-size:2.8px' }, ['12a', '6a', '12p', '6p'][h / 6]));
+        }
+        const here = new Date();
+        const dot = (hour, color, label, big) => {
+            const [x, y] = pt(ang(hour), R);
+            s.appendChild(mk('circle', { cx: x, cy: y, r: big ? 2.1 : 1.6, fill: color, stroke: '#0b0d11', 'stroke-width': 0.6 }));
+            const top = Math.abs(ang(hour)) < 50;          // near the top, tuck the label under the nav row
+            const [lx, ly] = pt(ang(hour), R - (top ? 9 : 5.2));
+            if (label) s.appendChild(mk('text', { x: lx, y: ly + 1.1, 'text-anchor': 'middle', fill: color }, label));
+        };
+        CITIES.map(info).forEach((ci) => dot(ci.hour, '#c9d3ff', ci.code));
+        dot(here.getHours() + here.getMinutes() / 60, '#4f8cff', '', true);
+        return s;
+    };
+    const d = base();
+    d.appendChild(ringSvg());
+    d.appendChild(stats(STATS));
+
+    // ---------- E: ring plus the city line ----------
+    const e = base({ smallClock: true });
+    e.appendChild(ringSvg());
+    e.appendChild(cityLine());
+    e.appendChild(stats(STATS));
+
+    const grid = document.getElementById('grid');
+    grid.appendChild(card('A. City line', 'Up to three cities on one line under the weather, as short codes. Night times are tinted; a different day gets +1 or −1.',
+        ['every chosen city at a glance, no motion', 'works offline'], ['a fourth line of text on Home', 'three cities max, using codes'], a, true));
+    grid.appendChild(card('B. One city at a time', 'The same spot shows one city, fading to the next every few seconds, with full names.',
+        ['calm and uncluttered', 'full names instead of codes'], ['you wait for the city you want', 'motion in your peripheral vision'], b));
+    grid.appendChild(card('C. A city as a glance stat', 'One city takes a slot in the stats row; pressing it jumps to World.',
+        ['reuses the existing stat pattern', 'pressable'], ['one city only', 'competes with timers, habits and countdowns for three slots'], c));
+    grid.appendChild(card('D. 24-hour ring', 'A bezel around the edge: noon at the top, midnight at the bottom, night shaded purple. Cities are dots at their local time; the blue dot is you.',
+        ['shows who is awake at a glance', 'uses the round screen'], ['positions, not exact times', 'shares the edge with the timer dial on other panels'], d));
+    grid.appendChild(card('E. Ring and line', 'D and A together: the ring for who is awake, the line for exact times. The clock shrinks a little to fit.',
+        ['both answers on one screen'], ['the busiest Home of the five'], e));
+})();
+</script>
+</body>
+</html>

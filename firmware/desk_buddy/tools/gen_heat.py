@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""Artwork for the Heat Home face: palm silhouettes (day) and the city skyline (night).
+
+The same shapes go to both sides so they match:
+  - src/heat_assets.cpp / .h   palm alpha masks (4 bpp, cropped) and the skyline tables for the firmware
+  - tools/heat_assets.js     the palms as SVG paths and the same skyline tables, pasted into
+                             display.html's HEAT_ART (between the "HEAT_ART begin/end" markers)
+
+Usage: python3 tools/gen_heat.py   (rerun after changing a shape; then paste heat_assets.js)
+Coordinates are the 480 x 480 screen.
+"""
+import json
+import math
+import random
+from pathlib import Path
+
+from PIL import Image, ImageDraw
+
+ROOT = Path(__file__).resolve().parent.parent
+W = 480
+HORIZON = 300  # the day scene's horizon (paintHeat's HY)
+SS = 4         # supersampling for the masks
+
+
+def bez(p0, p1, p2, t):
+    u = 1 - t
+    return (u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0], u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1])
+
+
+def band(p0, p1, p2, w0, w1, steps=24, teeth=0):
+    """A tapered band along a quadratic curve: width w0 at the start, w1 at the end. teeth:
+    frond fingers (the width dips every other sample)."""
+    left, right = [], []
+    for i in range(steps + 1):
+        t = i / steps
+        x, y = bez(p0, p1, p2, t)
+        dx = 2 * (1 - t) * (p1[0] - p0[0]) + 2 * t * (p2[0] - p1[0])
+        dy = 2 * (1 - t) * (p1[1] - p0[1]) + 2 * t * (p2[1] - p1[1])
+        L = math.hypot(dx, dy) or 1
+        nx, ny = -dy / L, dx / L
+        w = w0 + (w1 - w0) * t
+        if teeth:
+            w *= math.sin(math.pi * min(1, 0.12 + t * 0.95)) ** 0.6
+            if i % 2 and 0.25 < t < 0.92:
+                w *= 0.62
+        left.append((x + nx * w / 2, y + ny * w / 2))
+        right.append((x - nx * w / 2, y - ny * w / 2))
+    return left + right[::-1]
+
+
+def palm(base, crown, lean, size):
+    """Polygons for one palm: a curved trunk from base to crown, and drooping fronds."""
+    polys = []
+    ctrl = ((base[0] + crown[0]) / 2 + lean, (base[1] + crown[1]) / 2)
+    polys.append(band(base, ctrl, crown, 15 * size, 7 * size, steps=30))
+    # fronds: angle (degrees, 0 = right, 90 = down), length, droop
+    # Arching fronds: up from the crown, then drooping to the tip.
+    for ang, ln, droop in [(-172, 78, 62), (-140, 70, 46), (-105, 44, 22), (-72, 46, 24), (-38, 72, 48),
+                           (-6, 80, 66), (150, 58, 60), (30, 56, 58)]:
+        a = math.radians(ang)
+        tip = (crown[0] + math.cos(a) * ln * size, crown[1] + math.sin(a) * ln * size + droop * size)
+        mid = (crown[0] + math.cos(a) * ln * size * 0.6, crown[1] + math.sin(a) * ln * size * 0.6 - 22 * size)
+        polys.append(band(crown, mid, tip, 24 * size, 3 * size, steps=26, teeth=1))
+    polys.append([(crown[0] + 9 * size * math.cos(k * math.pi / 6), crown[1] + 9 * size * math.sin(k * math.pi / 6))
+                  for k in range(12)])  # the crown's knot
+    return polys
+
+
+PALMS = [palm((78, 492), (100, 172), -34, 1.0),    # left, tall
+         palm((410, 492), (388, 228), 28, 0.85)]   # right, shorter
+
+
+def mask(polys):
+    """A 4 bpp alpha mask cropped to the shapes: (x, y, w, h, bytes)."""
+    big = Image.new("L", (W * SS, W * SS), 0)
+    d = ImageDraw.Draw(big)
+    for p in polys:
+        d.polygon([(x * SS, y * SS) for x, y in p], fill=255)
+    img = big.resize((W, W), Image.BOX)
+    x0, y0, x1, y1 = img.getbbox()
+    img = img.crop((x0, y0, x1, y1))
+    w, h = img.size
+    px = [v >> 4 for v in img.tobytes()]
+    if len(px) % 2:
+        px.append(0)
+    packed = bytes((px[i] << 4) | px[i + 1] for i in range(0, len(px), 2))
+    return x0, y0, w, h, packed
+
+
+def skyline():
+    """Buildings as (x0, x1, top) and lit windows as (x, y, color index), seeded so they never
+    change. Tallest in the middle-ish, low at the edges where the round screen cuts in."""
+    rng = random.Random(23)
+    b, x = [], 18
+    while x < W - 18:
+        w = rng.randint(22, 46)
+        edge = min(x, W - x) / (W / 2)            # 0 at the edges, 1 in the middle
+        top = 438 - int((40 + rng.randint(0, 70)) * (0.45 + 0.55 * edge))
+        b.append((x, min(W - 18, x + w), top))
+        if rng.random() < 0.3 and edge > 0.4:     # a spire
+            sx = x + w // 2 - 2
+            b.append((sx, sx + 4, top - rng.randint(14, 30)))
+        x += w + rng.choice([0, 0, 2, 4])
+    win = []
+    for x0, x1, top in b:
+        if x1 - x0 < 10:
+            continue
+        for _ in range(rng.randint(1, 4)):
+            wx = rng.randint(x0 + 4, x1 - 8)
+            wy = rng.randint(top + 6, min(top + 60, 440))
+            win.append((wx, wy, rng.choice([0, 0, 1, 2])))
+    return b, win
+
+
+def svg_path(polys):
+    return " ".join("M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in p) + "Z" for p in polys)
+
+
+masks = [mask(p) for p in PALMS]
+buildings, windows = skyline()
+
+c = ["/* Generated by tools/gen_heat.py. Do not edit. */", '#include "heat_assets.h"', ""]
+for i, (x, y, w, h, data) in enumerate(masks):
+    rows = [", ".join(f"0x{v:02x}" for v in data[j:j + 24]) for j in range(0, len(data), 24)]
+    c.append(f"static const uint8_t palm{i}_px[] = {{\n  " + ",\n  ".join(rows) + "\n};")
+c.append("const HeatMask HEAT_PALMS[HEAT_PALM_COUNT] = {")
+for i, (x, y, w, h, _) in enumerate(masks):
+    c.append(f"  {{{x}, {y}, {w}, {h}, palm{i}_px}},")
+c.append("};")
+c.append("const HeatBuilding HEAT_BUILDINGS[HEAT_BUILDING_COUNT] = {\n  " +
+         ", ".join(f"{{{a}, {b2}, {t}}}" for a, b2, t in buildings) + "\n};")
+c.append("const HeatWindow HEAT_WINDOWS[HEAT_WINDOW_COUNT] = {\n  " +
+         ", ".join(f"{{{x}, {y}, {k}}}" for x, y, k in windows) + "\n};")
+(ROOT / "src" / "heat_assets.cpp").write_text("\n".join(c) + "\n")
+
+(ROOT / "src" / "heat_assets.h").write_text(f"""// Generated by tools/gen_heat.py. Do not edit. Artwork for the Heat Home face (480 px screen).
+#pragma once
+#include <stdint.h>
+
+// A cropped 4 bpp alpha mask (two pixels per byte, high nibble first, rows of w pixels).
+struct HeatMask {{ int16_t x, y, w, h; const uint8_t *px; }};
+struct HeatBuilding {{ int16_t x0, x1, top; }};   // a building fills x0..x1 from top down
+struct HeatWindow {{ int16_t x, y; uint8_t color; }};  // a lit 4x4 window; color indexes HEAT_WINDOW_COLORS
+
+constexpr int HEAT_PALM_COUNT = {len(masks)};
+constexpr int HEAT_BUILDING_COUNT = {len(buildings)};
+constexpr int HEAT_WINDOW_COUNT = {len(windows)};
+constexpr uint32_t HEAT_WINDOW_COLORS[3] = {{0xFF4FA0, 0x3FF0D8, 0xFFC857}};
+extern const HeatMask HEAT_PALMS[HEAT_PALM_COUNT];
+extern const HeatBuilding HEAT_BUILDINGS[HEAT_BUILDING_COUNT];
+extern const HeatWindow HEAT_WINDOWS[HEAT_WINDOW_COUNT];
+""")
+
+js = {"palms": [svg_path(p) for p in PALMS], "buildings": buildings, "windows": windows,
+      "windowColors": ["#ff4fa0", "#3ff0d8", "#ffc857"]}
+(ROOT / "tools" / "heat_assets.js").write_text(
+    "// Generated by tools/gen_heat.py: paste over display.html's HEAT_ART.\n"
+    f"const HEAT_ART = {json.dumps(js, separators=(',', ':'))};\n")
+
+prev = Image.new("RGB", (W, W), (255, 140, 80))
+for x, y, w, h, data in masks:
+    for j in range(h):
+        for i in range(w):
+            k = j * w + i
+            a = (data[k // 2] >> (0 if k % 2 else 4)) & 15
+            if a:
+                r, g, b = prev.getpixel((x + i, y + j))
+                t = a / 15
+                prev.putpixel((x + i, y + j), (int(r * (1 - t) + 20 * t), int(g * (1 - t) + 8 * t), int(b * (1 - t) + 31 * t)))
+d = ImageDraw.Draw(prev)
+for x0, x1, top in buildings:
+    d.rectangle((x0, top, x1 - 1, W), fill=(8, 4, 15))
+for x, y, k in windows:
+    d.rectangle((x, y, x + 3, y + 3), fill=["#ff4fa0", "#3ff0d8", "#ffc857"][k])
+prev.save(ROOT / "tools" / "heat_preview.png")
+print(f"palms {[m[2:4] for m in masks]}, {sum(len(m[4]) for m in masks)} bytes; "
+      f"{len(buildings)} buildings, {len(windows)} windows")

@@ -1,0 +1,12 @@
+# Build output
+.pio/
+*.bin
+
+# Third-party reference clone (its own git repo; link it instead)
+examples/
+
+# macOS
+.DS_Store
+__pycache__/
+*.pyc
+_site/
