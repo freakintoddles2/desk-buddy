@@ -10,7 +10,7 @@ The customize sheet (swipe up from the bottom of Home), the knob order, the dots
 ## Rules first
 
 - **Append only.** The device saves the chosen face as its index in `FACES` (NVS key `homeface`). Add new faces at the end, and never reorder or delete one, or everyone's saved face silently changes. The faux display saves the `key` instead, but keep the same order there too.
-- **Paint budget under ~1 s.** The background is painted pixel by pixel on core 0 once a minute and when the sheet shows previews. Current times at 480 px: Plain ~20 ms, Living sky ~180 ms, Sun ring ~440 ms, Heat ~585 ms. About 2 s feels laggy.
+- **Paint budget under ~1 s.** The background is painted pixel by pixel on core 0 once a minute and when the sheet shows previews. Current times at 480 px: Plain ~20 ms, Sun ring ~440 ms, Heat ~585 ms, Living sky ~0.3 s clear up to ~2 s in a storm (its weather layers; the last painted sky stays up while the next one paints). About 2 s feels laggy when switching to a face.
 - **Keep the 148 px clock line height.** A different clock font must keep Home's layout (see "A custom clock font" below).
 - **Check the text.** Clock, date, weather line and stats sit over the middle of the screen. Pick text colors per face (day and night) and look at it at several times of day.
 
@@ -45,6 +45,7 @@ Fields (the defaults are those of Sun ring, without its ring):
 | `lightBg` | A bright background: the selection bar turns white and stat colors are swapped for white or black when they'd be under 3:1 contrast. The contrast check samples the standard `bg` gradient, so it's only accurate for faces without their own painter. |
 | `paint` | Own painter instead of the standard one (level 2). |
 | `daySprite` | `false` when the painter draws the sun itself (Home then shows no sun sprite by day). |
+| `weather` | The sky follows the weather (`skywx.cpp`, `paintWeatherSky` in `display.html`): clouds, rain, snow, fog and storms per WMO code. Set on Living sky, with `paint = paintWeatherSky`. When clouds cover the sun or moon, the painter draws it dimmed and Home hides the sprite. |
 | `clockFont` | A generated clock font; `nullptr` keeps `font_clock_120`. Faux display: a CSS class `font-<name>`. |
 | `upper` | Date in spaced capitals. (Not the weather line: in capitals it no longer fits.) |
 

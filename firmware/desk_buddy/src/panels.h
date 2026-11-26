@@ -3,6 +3,7 @@
 #include "app.h"
 
 Panel *makeHomePanel();      // home.cpp
+void homeTestSkyCode(int code);  // home.cpp: serial X<code>, Living sky shows that weather (-1: the real one)
 Panel *makeSettingsPanel();  // settings.cpp
 Screen *makeBrightnessScreen();  // settings.cpp; also the tray's quick button
 Panel *makeFocusPanel();     // focus.cpp

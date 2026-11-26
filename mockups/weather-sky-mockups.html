@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weather skies</title>
+<style>
+  :root {
+    --page: #0f1115; --panel: #171a20; --text: #e6e9ef; --muted: #98a2b3; --border: #2a2f39; --accent: #4f8cff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 36px 0 4px; }
+  p { margin: 6px 0; color: var(--muted); max-width: 820px; }
+  .builder { display: grid; grid-template-columns: 480px 1fr; gap: 28px; align-items: start; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin: 20px 0; }
+  .ctl label { display: block; margin: 12px 0 4px; font-weight: 600; }
+  .ctl select, .ctl input[type=range] { width: 100%; }
+  .ctl output { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .row { display: grid; grid-template-columns: 170px repeat(5, 1fr); gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .row .lab b { display: block; font-size: 15px; }
+  .row .lab span { color: var(--muted); font-size: 13px; }
+  .heads { padding: 0; border: 0; color: var(--muted); font-size: 13px; text-align: center; }
+  .dev { position: relative; width: 100%; max-width: 220px; aspect-ratio: 1; margin: 0 auto; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 6px #22262e; cursor: zoom-in; container-type: inline-size; }
+  .builder .dev { max-width: 480px; cursor: default; }
+  .dev canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; pointer-events: none; text-shadow: 0 1px 6px rgba(0,0,0,.22); }
+  .face .clock { font-size: 20cqw; font-weight: 300; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .face .date { margin-top: 1.2cqw; font-size: 3.6cqw; color: #e6ecf5; }
+  .face .wx { margin-top: .8cqw; font-size: 3.2cqw; color: #e6ecf5; }
+  .face .wx b { color: #fff; font-weight: 600; }
+  .hide-text .face { display: none; }
+  .toggle { margin: 10px 0 0; color: var(--muted); }
+  dialog { background: var(--page); border: 1px solid var(--border); border-radius: 18px; padding: 18px; color: var(--text); }
+  dialog::backdrop { background: rgba(0,0,0,.7); }
+  dialog .dev { width: 480px; max-width: 80vw; cursor: zoom-out; }
+  dialog p { text-align: center; margin: 10px 0 0; }
+  table { border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+  td, th { text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  @media (max-width: 900px) {
+    .builder { grid-template-columns: 1fr; }
+    .builder .dev { max-width: 360px; }
+    .row { grid-template-columns: 1fr 1fr; }
+    .row .lab { grid-column: 1 / -1; }
+    .heads { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Living sky with weather</h1>
+  <p>Mock-up for Living sky following the current weather. One painter covers every state: each Open-Meteo weather code sets a few numbers (cloud cover, cloud darkness, sky gray, rain or snow amount, fog, lightning), so there's no image per state. Pixels are quantized to RGB565 with the device's Bayer dither. Clouds drift a little each minute. Click a sky to see it full size.</p>
+  <label class="toggle"><input type="checkbox" id="showText" checked> Show the clock and weather line</label>
+
+  <div class="builder">
+    <div class="dev" id="bigDev"><canvas width="480" height="480"></canvas><div class="face"></div></div>
+    <div class="ctl">
+      <label>Weather <output id="codeOut"></output></label>
+      <select id="selState"></select>
+      <label>Time <output id="timeOut"></output></label>
+      <input type="range" id="selTime" min="0" max="23.9" step="0.1" value="10">
+      <label>Minute (cloud drift) <output id="driftOut"></output></label>
+      <input type="range" id="selDrift" min="0" max="120" step="1" value="0">
+      <label>Rain style</label>
+      <div id="rainChecks" style="display:flex;flex-wrap:wrap;gap:4px 14px"></div>
+      <label><input type="checkbox" id="useCover"> Use cloud cover % instead of the code's level</label>
+      <input type="range" id="selCover" min="0" max="100" step="1" value="60" disabled>
+      <p id="coverNote" style="font-size:13px">Open-Meteo also returns cloud cover as a percent (<code>cloud_cover</code>), which would give smooth steps between the code's four cloud levels.</p>
+    </div>
+  </div>
+
+  <h2>Rain styles</h2>
+  <p>The same rain at different strengths, drawn with each combination of the ideas: (1) bolder streaks, (2) splashes along the bottom, (3) drips running down the glass, (4) rain curtains under the clouds, (5) a cooler, slate-blue cast. Click any sky to see it full size. The rows below the comparison use the style picked in the builder, which starts on the chosen style: 1 + 2 + 3 + 5.</p>
+  <div id="rainRows"></div>
+
+  <div id="rows"></div>
+
+  <h2>How it would run on the device</h2>
+  <table>
+    <tr><th>Piece</th><th>Approach</th></tr>
+    <tr><td>Clouds</td><td>A 64 x 64 byte noise table (4 KB, built once at boot), sampled at two scales with bilinear lookups. The cover level sets a threshold, darkness sets the color. Nothing stored per state.</td></tr>
+    <tr><td>Rain, drizzle, sleet</td><td>Slanted streaks from an integer hash of the column: no stored drops, a few adds and a compare per pixel.</td></tr>
+    <tr><td>Snow, grains, hail</td><td>One hashed dot per grid cell, two layers of cell sizes. Cells that miss the density test cost one compare.</td></tr>
+    <tr><td>Fog</td><td>A blend toward the fog color, stronger toward the bottom, with soft bands from the same noise table.</td></tr>
+    <tr><td>Lightning</td><td>One fixed zigzag bolt with a fork (14 segments) to the right of the clock, with a bright patch in the clouds behind it (larger and violet at night). Only pixels near its bounding box check the segments.</td></tr>
+    <tr><td>Sun and moon</td><td>When clouds cover them the painter draws them under the clouds and Home hides the sprite (like Heat does). In clear weather the sprite stays.</td></tr>
+    <tr><td>Legibility</td><td>Rain and snow fade to about a third inside an oval around the clock and date.</td></tr>
+    <tr><td>Repaint</td><td>As now, once a minute, plus once when new weather arrives. Which weather: the current conditions; if those are over 3 hours old, the forecast for this hour (the forecast covers 30 hours); with no weather data at all (no Wi-Fi, no location, never fetched), Mainly clear.</td></tr>
+  </table>
+  <p>Measured on the device (2026-11-26, core 0, 480 px): ~0.3 s clear, ~0.6-0.8 s cloudy or foggy, ~1.2-1.6 s rain or snow, ~2 s a thunderstorm. Clouds are sampled every 2 px and interpolated, and each column's or cell's random numbers are cached, which took rain from ~2.6 s to ~1.2 s. Home keeps the last painted sky up while the next one paints.</p>
+</div>
+
+<dialog id="dlg"><div class="dev" id="dlgDev"><canvas width="480" height="480"></canvas><div class="face"></div></div><p id="dlgCap"></p></dialog>
+
+<script>
+// ---------- the sky by time of day (home.cpp SkyKeys) ----------
+const RISE = 7.15, SET = 17.45;  // a late-November day in the desert southwest
+const rgb = h => [(h >> 16 & 255) / 255, (h >> 8 & 255) / 255, (h & 255) / 255];
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const clamp = (v, a = 0, b = 1) => v < a ? a : v > b ? b : v;
+const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a)); return t * t * (3 - 2 * t); };
+const KEY_H = [0, RISE - 1.6, RISE, RISE + 1.3, RISE + 3.5, SET - 3, SET - 1.2, SET, SET + 1.1, 24];
+const KEY_C = [0x1b1d4a, 0x2a2458, 0xe98a6a, 0xf2b77c, 0x5ea9ea, 0x5aa2e4, 0xf19a5c, 0xe1566e, 0x4a2a6e, 0x1b1d4a].map(rgb);
+const KEY_T = [0x0a0f2c, 0x0f1538, 0x3b4a8f, 0x3f7fd6, 0x2a6fd0, 0x2766c4, 0x4a5bb0, 0x3b2a74, 0x191a4c, 0x0a0f2c].map(rgb);
+function keyAt(arr, hour) {
+  let i = 0; while (i < 8 && KEY_H[i + 1] <= hour) i++;
+  const t = clamp((hour - KEY_H[i]) / (KEY_H[i + 1] - KEY_H[i]));
+  return mix(arr[i], arr[i + 1], t);
+}
+// How much daylight (0 night .. 1 full day), for cloud lighting.
+const daylight = h => sstep(RISE - 0.8, RISE + 1.2, h) * (1 - sstep(SET - 0.6, SET + 1.0, h));
+
+// ---------- weather states ----------
+// cover: 0..1 cloud cover; tone: 0 white fair-weather clouds .. 1 storm gray; gray/dark: how much
+// the sky itself goes gray and darker; sun: how visible the sun or moon is; p: precipitation
+// {type, amt 0..1}; fog 0..1; bolt; ice: icy tint; showers: rain only under the clouds.
+const STATES = [
+  { g: 'Clouds', key: 'clear', name: 'Clear', codes: [0], cover: 0, tone: 0, gray: 0, dark: 0, sun: 1 },
+  { g: 'Clouds', key: 'mainly', name: 'Mainly clear', codes: [1], cover: .14, tone: 0, gray: 0, dark: 0, sun: 1 },
+  { g: 'Clouds', key: 'partly', name: 'Partly cloudy', codes: [2], cover: .48, tone: .12, gray: .1, dark: 0, sun: 1 },
+  { g: 'Clouds', key: 'overcast', name: 'Overcast', codes: [3], cover: 1, tone: .62, gray: .75, dark: .12, sun: .12 },
+  { g: 'Fog', key: 'fog', name: 'Fog', codes: [45], cover: 1, tone: .15, gray: .7, dark: 0, sun: .35, fog: .8 },
+  { g: 'Fog', key: 'rime', name: 'Freezing fog', codes: [48], cover: 1, tone: .15, gray: .75, dark: 0, sun: .3, fog: .85, ice: .5 },
+  { g: 'Drizzle', key: 'dz1', name: 'Light drizzle', codes: [51], cover: .85, tone: .35, gray: .55, dark: .05, sun: .3, p: { t: 'drizzle', amt: .35 } },
+  { g: 'Drizzle', key: 'dz2', name: 'Drizzle', codes: [53], cover: .95, tone: .45, gray: .7, dark: .1, sun: .15, p: { t: 'drizzle', amt: .65 } },
+  { g: 'Drizzle', key: 'dz3', name: 'Dense drizzle', codes: [55], cover: 1, tone: .55, gray: .8, dark: .15, sun: .05, p: { t: 'drizzle', amt: 1 } },
+  { g: 'Drizzle', key: 'fzdz', name: 'Freezing drizzle', codes: [56, 57], cover: 1, tone: .45, gray: .8, dark: .08, sun: .08, p: { t: 'drizzle', amt: .7 }, ice: 1 },
+  { g: 'Rain', key: 'ra1', name: 'Light rain', codes: [61], cover: .9, tone: .5, gray: .65, dark: .1, sun: .15, p: { t: 'rain', amt: .3 } },
+  { g: 'Rain', key: 'ra2', name: 'Rain', codes: [63], cover: 1, tone: .65, gray: .8, dark: .2, sun: .05, p: { t: 'rain', amt: .6 } },
+  { g: 'Rain', key: 'ra3', name: 'Heavy rain', codes: [65], cover: 1, tone: .8, gray: .88, dark: .32, sun: 0, p: { t: 'rain', amt: 1 } },
+  { g: 'Rain', key: 'fzra', name: 'Freezing rain', codes: [66, 67], cover: 1, tone: .6, gray: .85, dark: .15, sun: 0, p: { t: 'rain', amt: .6 }, ice: 1 },
+  { g: 'Showers', key: 'sh1', name: 'Light showers', codes: [80], cover: .9, tone: .5, gray: .65, dark: .1, sun: .15, p: { t: 'rain', amt: .4 }, showers: true },
+  { g: 'Showers', key: 'sh2', name: 'Showers', codes: [81], cover: 1, tone: .65, gray: .8, dark: .2, sun: .05, p: { t: 'rain', amt: .7 }, showers: true },
+  { g: 'Showers', key: 'sh3', name: 'Violent showers', codes: [82], cover: 1, tone: .8, gray: .88, dark: .32, sun: 0, p: { t: 'rain', amt: 1 }, showers: true },
+  { g: 'Snow', key: 'sn1', name: 'Light snow', codes: [71], cover: .9, tone: .25, gray: .7, dark: -.04, sun: .2, p: { t: 'snow', amt: .3 } },
+  { g: 'Snow', key: 'sn2', name: 'Snow', codes: [73], cover: 1, tone: .3, gray: .8, dark: 0, sun: .08, p: { t: 'snow', amt: .6 } },
+  { g: 'Snow', key: 'sn3', name: 'Heavy snow', codes: [75], cover: 1, tone: .4, gray: .88, dark: .06, sun: 0, p: { t: 'snow', amt: 1 }, fog: .25 },
+  { g: 'Snow', key: 'sg', name: 'Snow grains', codes: [77], cover: 1, tone: .3, gray: .8, dark: 0, sun: .08, p: { t: 'grains', amt: .7 } },
+  { g: 'Snow', key: 'ss1', name: 'Snow showers', codes: [85], cover: .9, tone: .25, gray: .7, dark: -.04, sun: .2, p: { t: 'snow', amt: .45 }, showers: true },
+  { g: 'Snow', key: 'ss2', name: 'Heavy snow showers', codes: [86], cover: 1, tone: .3, gray: .8, dark: 0, sun: .08, p: { t: 'snow', amt: .9 }, showers: true },
+  { g: 'Storms', key: 'ts', name: 'Thunderstorm', codes: [95], cover: 1, tone: .95, gray: .9, dark: .45, sun: 0, p: { t: 'rain', amt: .5 }, bolt: true },
+  { g: 'Storms', key: 'tsgr', name: 'Thunderstorm with hail', codes: [96, 99], cover: 1, tone: 1, gray: .92, dark: .5, sun: 0, p: { t: 'hail', amt: .55 }, bolt: true },
+];
+const WX_TEXT = { clear: 'Clear', mainly: 'Mainly clear', partly: 'Partly cloudy', overcast: 'Overcast' };
+
+// ---------- noise (the device would keep this 64 x 64 table in PSRAM) ----------
+const NS = 64, NOISE = new Uint8Array(NS * NS);
+{ let s = 12345; for (let i = 0; i < NOISE.length; i++) { s = (Math.imul(s, 1103515245) + 12345) >>> 0; NOISE[i] = s >>> 24; } }
+function vnoise(x, y) {  // x, y in cells; wraps
+  const xi = Math.floor(x), yi = Math.floor(y);
+  let fx = x - xi, fy = y - yi; fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+  const x0 = xi & 63, y0 = yi & 63, x1 = (x0 + 1) & 63, y1 = (y0 + 1) & 63;
+  const a = NOISE[y0 * NS + x0], b = NOISE[y0 * NS + x1], c = NOISE[y1 * NS + x0], d = NOISE[y1 * NS + x1];
+  return ((a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy) / 255;
+}
+const cloudN = (X, Y, drift) => .5 * vnoise((X + drift) / 120, Y / 42) + .3 * vnoise((X + drift * 1.5) / 50, Y / 20) + .2 * vnoise((X + drift * 2) / 21, Y / 10);
+function hash(n) { n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; }
+
+// ---------- lightning bolt (fixed, right of the clock) ----------
+const BOLT = (() => {
+  // A zigzag down from the clouds, plus one short fork.
+  let s = 7; const rnd = () => (s = (Math.imul(s, 1103515245) + 12345) >>> 0, (s >>> 24) / 255);
+  const main = [[432, 120]];
+  for (let i = 0; i < 10; i++) { const [x, y] = main[main.length - 1]; main.push([x + (i % 2 ? 1 : -1) * (6 + 10 * rnd()) - 1, y + 16 + 10 * rnd()]); }
+  const [fx, fy] = main[3], fork = [[fx, fy]];
+  for (let i = 0; i < 4; i++) { const [x, y] = fork[fork.length - 1]; fork.push([x - 6 - 6 * rnd(), y + 12 + 8 * rnd()]); }
+  return [main, fork];
+})();
+const ALLPTS = BOLT.flat();
+const BOLT_BOX = [Math.min(...ALLPTS.map(p => p[0])) - 22, 100, Math.max(...ALLPTS.map(p => p[0])) + 22, Math.max(...ALLPTS.map(p => p[1])) + 20];
+function boltDist(X, Y) {
+  let best = 1e9;
+  for (const line of BOLT) for (let i = 0; i < line.length - 1; i++) {
+    const [ax, ay] = line[i], [bx, by] = line[i + 1];
+    const dx = bx - ax, dy = by - ay, t = clamp(((X - ax) * dx + (Y - ay) * dy) / (dx * dx + dy * dy));
+    const ex = X - ax - dx * t, ey = Y - ay - dy * t; best = Math.min(best, ex * ex + ey * ey);
+  }
+  return Math.sqrt(best);
+}
+
+// ---------- rain styles (being compared) ----------
+// bold: thicker, brighter streaks (1). splash: splashes along the bottom (2). glass: drops on the
+// screen like a rainy window (3). curtains: darker rain bands under the clouds (4). blue: a cooler,
+// slate-blue cast for rain (5).
+// Chosen 2026-11-26: 1 + 2 + 3 + 5 (no curtains), for all rain, drizzle, showers and storms.
+let RAIN = { bold: true, splash: true, glass: true, curtains: false, blue: true };
+
+// ---------- the painter ----------
+const BAYER = [[0,32,8,40,2,34,10,42],[48,16,56,24,50,18,58,26],[12,44,4,36,14,46,6,38],[60,28,52,20,62,30,54,22],[3,35,11,43,1,33,9,41],[51,19,59,27,49,17,57,25],[15,47,7,39,13,45,5,37],[63,31,55,23,61,29,53,21]];
+const lum0 = c => .3 * c[0] + .59 * c[1] + .11 * c[2];
+const q = (v, L, b) => clamp(Math.floor(clamp(v) * (L - 1) + (b + .5) / 64), 0, L - 1) / (L - 1);
+
+function sunPos(hour) {
+  const night = hour < RISE || hour > SET;
+  let p;
+  if (!night) p = (hour - RISE) / (SET - RISE);
+  else { const len = 24 - (SET - RISE); p = (hour >= SET ? hour - SET : hour + 24 - SET) / len; }
+  p = clamp(p);
+  return { night, x: 240 - 168 * Math.cos(Math.PI * p), y: 236 - 150 * Math.sin(Math.PI * p) };
+}
+
+function paint(canvas, S, hour, drift, coverOverride, R = RAIN) {
+  const n = canvas.width, k = 480 / n, ctx = canvas.getContext('2d'), img = ctx.createImageData(n, n), px = img.data;
+  const top = keyAt(KEY_T, hour), bot = keyAt(KEY_C, hour), day = daylight(hour);
+  const body = sunPos(hour), night = body.night;
+  const cover = coverOverride != null ? coverOverride : S.cover;
+  const th = .72 - cover * .42, soft = .1;  // cloud threshold on the noise
+  // Glow (Living sky's), weakened by the cloud cover.
+  let far = 0; for (const cx of [0, 480]) for (const cy of [0, 480]) far = Math.max(far, Math.hypot(cx - body.x, cy - body.y));
+  const glowR = far * .30, glowAmt = (night ? .025 + .075 * .8 : .35) * (.35 + .65 * S.sun);
+  const tint = night ? rgb(0xAAB4FF) : rgb(0xFFF1C8);
+  const bodyR = night ? 20.4 : 22, bodyCol = night ? rgb(0xDFE6FF) : rgb(0xFFC34D);
+  // Cloud colors: lit by the sky's horizon color by day, moonlit gray-blue at night.
+  const litDay = mix([1, 1, 1], bot, .28 + .35 * (1 - day)), darkDay = mix([.36, .40, .47], [.17, .19, .24], S.tone);
+  const litNight = [.17, .19, .27], darkNight = [.07, .075, .1];
+  const lit = mix(litNight, litDay, day), dark = mix(darkNight, darkDay, day);
+  const fogCol = mix([.22, .24, .29], mix([.68, .71, .76], bot, .2), day);
+  const ice = S.ice || 0, fog = S.fog || 0, P = S.p;
+  const wet = P && (P.t === 'rain' || P.t === 'drizzle' || P.t === 'hail');  // the rain styles apply
+  const storm = !!S.bolt;
+  const slate = storm ? mix([.06, .07, .12], [.2, .25, .33], day) : mix([.16, .2, .3], [.36, .46, .6], day), blueAmt = wet && R.blue ? .16 + .12 * P.amt : 0;
+  const pCol = !P ? null : P.t === 'snow' || P.t === 'grains' ? mix([.78, .82, .9], [1, 1, 1], day)
+    : ice ? mix([.55, .68, .78], [.82, .95, 1], day) : mix([.45, .52, .65], [.80, .86, .94], day);
+
+  // The sky at height Y with the weather applied: grayer and darker under the clouds.
+  function skyAt(Y) {
+    let sky = mix(top, bot, clamp(Y / 480));
+    const lum = .3 * sky[0] + .59 * sky[1] + .11 * sky[2];
+    sky = mix(sky, [lum, lum, lum * 1.04], S.gray);
+    const dk = S.dark;
+    sky = dk >= 0 ? sky.map(c => c * (1 - dk)) : mix(sky, [.86, .9, .95], -dk * day * 4);
+    if (ice) sky = mix(sky, [.62, .78, .88], .12 * ice * (.3 + .7 * day));
+    if (blueAmt) sky = mix(sky, slate, blueAmt);
+    if (S.cover >= .85) sky = mix(sky, mix(lit, dark, S.tone), .7);  // what's overhead is mostly cloud
+    return sky;
+  }
+  for (let y = 0; y < n; y++) {
+    const Y = (y + .5) * k;
+    const sky = skyAt(Y);
+    const iceTint = ice * .14;
+    for (let x = 0; x < n; x++) {
+      const X = (x + .5) * k, i = (y * n + x) * 4;
+      let c = sky.slice();
+      // Glow and the sun or moon (under the clouds).
+      const gd = Math.hypot(X - body.x, Y - body.y);
+      if (gd < glowR) { const g = 1 - gd / glowR; c = mix(c, tint, g * g * glowAmt); }
+      // Clouds: thicker toward the top, a clearer band near the horizon.
+      let cl = 0;
+      if (cover > 0) {
+        const nz = cloudN(X, Y, drift) + (.5 - Y / 480) * .12;
+        const full = cover >= .85;  // mostly covered: one soft layer, no separate clouds
+        cl = full ? 1 : sstep(th - soft, th + soft, nz);
+        const cover01 = full ? (cover - .85) / .15 : 0;  // between 85% and 100%: a few gaps fade out
+        if (cl > 0) {
+          const core = sstep(th, th + .25, nz);  // thicker middles: whiter fair clouds, darker rain clouds
+          const shade = full ? clamp(S.tone + (nz - .5) * .45) : clamp(S.tone * (.3 + .7 * core) + (1 - core) * .1);
+          // Clouds thin out behind the clock and date so the text stays readable.
+          const ox = (X - 240) / 185, oy = (Y - 240) / 100, behind = 1 - sstep(.6, 1.2, ox * ox + oy * oy);
+          const alpha = full ? .82 + .18 * Math.max(cover01, sstep(th - .1, th + .1, nz)) : (.75 + .25 * core) * (1 - .5 * behind * (1 - S.tone));
+          c = mix(c, mix(lit, dark, shade), cl * alpha);
+        }
+      }
+      // The sun or moon shows through the clouds as much as the state allows.
+      if (gd < bodyR + 1 && S.sun > 0) c = mix(c, mix(c, bodyCol, .3 + .7 * S.sun), clamp(bodyR - gd + .5) * Math.min(1, S.sun * 2.5));
+      if (ice) c = mix(c, [.7, .86, .95], iceTint * (.4 + .6 * day));
+      if (blueAmt) c = mix(c, slate, blueAmt * .8);
+      // Rain curtains: darker slanted bands hanging under the clouds.
+      if (wet && R.curtains) {
+        const v = .6 * vnoise((X - Y * .22 + drift) / 46, 3.5) + .4 * vnoise((X - Y * .22 + drift) / 17, 7.5);
+        const band = sstep(.5, .7, v) * sstep(60, 200, Y) * (.2 + .2 * P.amt);
+        c = mix(c, mix([.05, .06, .09], [.22, .26, .33], day), band);
+      }
+      // Lightning: a bright patch in the clouds behind the bolt, then the bolt.
+      // Under heavy cloud, the hidden sun still brightens the clouds around where it is: low on the
+      // left and peach in the morning, high and white at midday, low on the right and warm later.
+      const hid = (1 - S.sun) * day * (cover >= .85 ? 1 : 0);
+      if (hid > 0) {
+        const sd = Math.hypot(X - body.x, (Y - body.y) * 1.25);
+        if (sd < 330) c = mix(c, mix(bot, [1, 1, 1], .3), (1 - sd / 330) ** 2 * (storm ? .3 : .38) * hid);
+      }
+      // Day: a lighter band low in the sky where the storm's edge lets light in (amber at sunset).
+      if (storm && day > 0) c = mix(c, mix(bot, [1, 1, 1], .1), sstep(300, 470, Y) * .38 * day);
+      // Night: the flash lights up the clouds far around the bolt, in violet; the rest stays black.
+      let flash = 0;
+      if (storm) { const fr = 150 + 130 * (1 - day), fl = Math.hypot(X - 420, Y - 150); flash = fl < fr ? (1 - fl / fr) ** 1.6 : 0; }
+      if (storm && flash > 0) c = mix(c, mix([.6, .55, .95], [.75, .78, .95], day), flash * (.45 + .25 * (1 - day)));
+      if (S.bolt && X > BOLT_BOX[0] - 60 && Y < BOLT_BOX[3] + 20) {
+        if (X > BOLT_BOX[0] && X < BOLT_BOX[2] && Y > BOLT_BOX[1] && Y < BOLT_BOX[3]) {
+          const d = boltDist(X, Y);
+          if (d < 14) c = mix(c, [.78, .82, 1], (1 - d / 14) ** 2 * .6);
+          if (d < 2.2) c = mix(c, [1, 1, 1], clamp(2.2 - d));
+        }
+      }
+      // Precipitation, faded in an oval around the clock and date.
+      if (P) {
+        const ox = (X - 240) / 175, oy = (Y - 245) / 92, calm = 1 - .65 * (1 - sstep(.75, 1.15, ox * ox + oy * oy));
+        let under = 1;
+        // Rain showers: heavier under the clouds, lighter in the gaps. Snow drifts everywhere.
+        if (S.showers && P.t !== 'snow') under = .3 + .7 * sstep(th - .05, th + .12, cloudN(X - Y * .2, 120, drift) + .05);
+        let a = 0;
+        if (P.t === 'rain' || P.t === 'drizzle' || P.t === 'hail') {
+          const drz = P.t === 'drizzle', slant = drz ? .12 : .16 + .14 * P.amt;
+          const sp = drz ? 6 : 10 - 4 * P.amt, u = X + Y * slant, col = Math.floor(u / sp);
+          if (hash(col * 3 + 1) < (drz ? .4 + .5 * P.amt : .35 + .55 * P.amt)) {
+            const len = (drz ? 5 : 16 + 22 * P.amt) * (.6 + .4 * hash(col * 3 + 2)), period = drz ? 26 : 70;
+            const ph = (Y + hash(col * 3 + 3) * period + drift * 3) % period;
+            const fu = u / sp - col, cx = .2 + .6 * hash(col * 7 + 5), w = Math.abs(fu - cx) * sp;
+            const hw = R.bold ? (drz ? 1.5 : 1.7) : 1.1;  // half width
+            if (ph < len && w < hw) {
+              const head = R.bold && ph > len * .82 ? 1.35 : 1;  // a brighter drop at the bottom end
+              a = (ph / len) ** .7 * clamp(hw - w) * head *  // bright head at the bottom, tail fading up
+                (R.bold ? (drz ? .6 + .25 * P.amt : .6 + .3 * P.amt) : (drz ? .45 + .25 * P.amt : .4 + .3 * P.amt));
+            }
+          }
+          if (P.t === 'hail') {
+            const cs = 22, gx = Math.floor(X / cs), gy = Math.floor((Y + drift * 2) / cs), h = hash(gx * 911 + gy * 977);
+            if (h < .35) {
+              const fx = (hash(gx * 13 + gy * 7 + 1) * .7 + .15) * cs, fy = (hash(gx * 5 + gy * 17 + 2) * .7 + .15) * cs;
+              const d = Math.hypot(X - gx * cs - fx, (Y + drift * 2) - gy * cs - fy);
+              if (d < 2.6) { c = mix(c, [.93, .96, 1], clamp(2.6 - d) * .9 * calm * under); }
+            }
+          }
+        } else {
+          // Snow: two layers of hashed flakes, near (big, sparse) and far (small, dense).
+          const grains = P.t === 'grains';
+          for (const [cs, r, dens, sd] of grains ? [[9, .9, .6 * P.amt, 3]] : [[30 - 10 * P.amt, 2.4, .3 + .45 * P.amt, 1], [15 - 4 * P.amt, 1.3, .35 + .45 * P.amt, 2]]) {
+            const yy = Y + drift * (sd === 1 ? 1.4 : .8), gx = Math.floor(X / cs), gy = Math.floor(yy / cs);
+            if (hash(gx * 73856093 ^ gy * 19349663 ^ sd) < dens) {
+              const fx = (hash(gx * 31 + gy * 17 + sd * 5) * .7 + .15) * cs, fy = (hash(gx * 11 + gy * 29 + sd * 3) * .7 + .15) * cs;
+              const d = Math.hypot(X - gx * cs - fx, yy - gy * cs - fy);
+              if (d < r + .6) a = Math.max(a, clamp(r + .5 - d) * (sd === 1 ? .95 : .7));
+            }
+          }
+        }
+        if (storm) a *= day + (1 - day) * (.25 + .75 * flash);  // at night the rain shows mostly in the flash
+        if (a > 0) c = mix(c, R.bold && wet ? mix(pCol, [1, 1, 1], .35) : pCol, clamp(a * calm * under));
+        // Splashes along the bottom: a small crown where each drop lands, with two flying drops.
+        if (wet && R.splash && Y > 340) {
+          const cs = 36 - 10 * P.amt, gx = Math.floor(X / cs), gy = Math.floor(Y / cs);
+          if (hash(gx * 92821 ^ gy * 68917) < .25 + .4 * P.amt) {
+            const sx = gx * cs + (.25 + .5 * hash(gx * 7 + gy * 3)) * cs, sy = gy * cs + (.4 + .4 * hash(gx * 5 + gy * 11)) * cs;
+            const rx = (P.t === 'drizzle' ? 3.5 : 5.5 + 2.5 * P.amt) * (.7 + .5 * hash(gx + gy * 31)), ry = rx * .26;
+            const dx = X - sx, dy = Y - sy, e = Math.sqrt((dx / rx) ** 2 + (dy / ry) ** 2);
+            let sa = 0;
+            if (Math.abs(e - 1) < .4) sa = (1 - Math.abs(e - 1) / .4) * (dy < 0 ? .45 : .8);  // the ripple, brighter in front
+            for (const [ox, oy, rr] of [[-.55, -1.0, 1.1], [.6, -1.15, 1], [.05, -1.5, .9]]) {  // droplets thrown up
+              const d = Math.hypot(X - (sx + ox * rx), Y - (sy + oy * rx * .7));
+              if (d < rr) sa = Math.max(sa, clamp(rr - d + .3) * .75);
+            }
+            if (sa > 0) c = mix(c, mix(pCol, [1, 1, 1], .3), sa * sstep(340, 390, Y) * under);
+          }
+        }
+      }
+      // Rain on the glass: drops running down with a wet trail behind them (some leave small
+      // beads along it), and still beads scattered between. Water lenses the sky, so a drop is
+      // lighter in the middle and bottom, with darker edges and a small glint.
+      if (wet && R.glass) {
+        const drz = P.t === 'drizzle';
+        const ox = (X - 240) / 175, oy = (Y - 245) / 92, calmG = 1 - .45 * (1 - sstep(.75, 1.15, ox * ox + oy * oy));
+        const water = (u, v, base) => {  // shade a point inside a drop; u, v in drop radii from its center
+          const d = Math.hypot(u, v);
+          let wc = mix(base, skyAt(Y - v * 60), .45);  // the sky, flipped by the lens
+          wc = mix(wc, [1, 1, 1], .14 + .14 * day);
+          wc = mix(wc, [0, 0, 0], sstep(.55, 1, d) * (v < .2 ? .45 : .18));  // darker rim, mostly at the top and sides
+          const cau = Math.hypot(u, v - .45);
+          if (cau < .45) wc = mix(wc, [1, 1, 1], (1 - cau / .45) * .35);  // light gathered at the bottom
+          const gl = Math.hypot(u + .32, v + .42);
+          if (gl < .18) wc = mix(wc, [1, 1, 1], (1 - gl / .18) * .8);  // glint
+          return wc;
+        };
+        let hit = false;
+        // Running drops: two staggered layers of columns, at most one drop per column.
+        for (const [cw, off, layer] of [[44, 0, 1], [44, 22, 2]]) {
+          if (hit) break;
+          const col = Math.floor((X + off) / cw);
+          if (hash(col * 7919 + layer * 104729) > (drz ? .2 : .3 + .4 * P.amt)) continue;
+          const r = drz ? 3.4 + 1.2 * hash(col * 31 + layer) : 5.5 + 3.5 * hash(col * 31 + layer);
+          const hy = 70 + 360 * ((hash(col * 53 + layer * 3) * .35 + col * .618 + layer * .5) % 1);  // where the drop is now, spread down the screen
+          const len = (drz ? 40 : 70 + 170 * P.amt) * (.5 + .7 * hash(col * 71 + layer));  // trail length
+          const ph = hash(col * 97 + layer) * 6.28, cxBase = col * cw - off + cw / 2 + (hash(col * 13 + layer) - .5) * (cw - 26);
+          const wob = yy => cxBase + 2.2 * Math.sin(yy / 23 + ph) + 1.2 * Math.sin(yy / 9 + ph * 2);  // trails wander a little
+          if (Y > hy - len - 2 && Y < hy + r * 1.2) {
+            const cx = wob(Y);
+            if (Y > hy - r * 1.4) {
+              // The drop: round at the bottom, drawn out toward the top.
+              const u0 = (X - wob(hy)) / r, v = (Y - hy) / r;
+              const w = v < 0 ? 1 - .5 * Math.min(1, -v / 1.4) : 1;
+              const u = u0 / w, d = v < 0 ? Math.hypot(u, v / 1.4) : Math.hypot(u, v);
+              if (d < 1) { c = mix(c, water(u, v < 0 ? v / 1.4 : v, c), clamp((1 - d) * r * 1.4) * calmG); hit = true; continue; }
+            }
+            // The trail: a thin wet streak that narrows toward the top.
+            const t = (hy - Y) / len, tw = r * (.5 - .3 * t);
+            if (t > 0 && t < 1 && Math.abs(X - cx) < tw + .8) {
+              const e = Math.abs(X - cx) / tw;
+              let tc = mix(c, [1, 1, 1], (.12 + .1 * day) * (1 - e) * (1 - .6 * t));
+              tc = mix(tc, [0, 0, 0], .22 * sstep(.45, 1, e) * (1 - .6 * t));
+              c = mix(c, tc, clamp(tw + .8 - Math.abs(X - cx)) * calmG);
+              hit = true;
+            }
+            // Small beads the drop left behind on its way down.
+            const bi = Math.floor((hy - Y + 6) / 26);
+            if (bi >= 1 && bi * 26 < len && hash(col * 331 + bi * 17 + layer) < .5) {
+              const by = hy - bi * 26 + 6 - 8 * hash(col + bi), bx = wob(by) + (hash(col * 3 + bi) - .5) * 6, br = 1.8 + 1.6 * hash(col * 5 + bi);
+              const u = (X - bx) / br, v = (Y - by) / br, d = Math.hypot(u, v);
+              if (d < 1) { c = mix(c, water(u, v, c), clamp((1 - d) * br * 1.5) * calmG); hit = true; }
+            }
+          }
+        }
+        // Still beads between the runners.
+        if (!hit) {
+          const cs = drz ? 18 : 28 - 6 * P.amt, gx = Math.floor(X / cs), gy = Math.floor(Y / cs);
+          if (hash(gx * 19349663 ^ gy * 83492791 ^ 5) < (drz ? .6 : .35 + .25 * P.amt)) {
+            const br = (drz ? 1.3 : 1.8) + (drz ? 1.5 : 2.2) * hash(gx * 3 + gy * 7);
+            const bx = gx * cs + br + 1 + (cs - 2 * br - 2) * hash(gx * 17 + gy * 5), by = gy * cs + br + 1 + (cs - 2 * br - 2) * hash(gx * 23 + gy * 13);
+            const u = (X - bx) / br, v = (Y - by) / br, d = Math.hypot(u, v);
+            if (d < 1) c = mix(c, water(u, v, c), clamp((1 - d) * br * 1.5) * calmG * .9);
+          }
+        }
+      }
+      // Fog: stronger toward the bottom, in soft bands.
+      if (fog) {
+        const band = vnoise((X + drift * .5) / 90, Y / 22);
+        c = mix(c, fogCol, clamp(fog * (.3 + .7 * Y / 480) * (.75 + .45 * band)));
+      }
+      const b = BAYER[y & 7][x & 7];
+      px[i] = q(c[0], 32, b) * 255; px[i + 1] = q(c[1], 64, b) * 255; px[i + 2] = q(c[2], 32, b) * 255; px[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// ---------- the page ----------
+const TIMES = [{ h: 8.3, name: 'Morning' }, { h: 12.5, name: 'Midday' }, { h: 15.5, name: 'Afternoon' }, { h: 17.25, name: 'Sunset' }, { h: 21, name: 'Night' }];
+const fmtTime = h => { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return `${(hh + 11) % 12 + 1}:${String(mm).padStart(2, '0')}`; };
+const temps = { Clouds: 68, Fog: 51, Drizzle: 55, Rain: 54, Showers: 61, Snow: 29, Storms: 72 };
+function faceHTML(S, h) {
+  return `<div class="clock">${fmtTime(h)}</div><div class="date">Wed, Nov 26</div><div class="wx"><b>${temps[S.g]}° ${S.name}</b> • H ${temps[S.g] + 6} L ${temps[S.g] - 12}</div>`;
+}
+
+const COMBOS = [
+  ['Today', {}], ['1', { bold: 1 }], ['3', { glass: 1 }], ['5', { blue: 1 }],
+  ['1 + 2', { bold: 1, splash: 1 }], ['1 + 5', { bold: 1, blue: 1 }], ['3 + 1', { glass: 1, bold: 1 }], ['3 + 2', { glass: 1, splash: 1 }],
+  ['3 + 5', { glass: 1, blue: 1 }], ['1 + 2 + 5', { bold: 1, splash: 1, blue: 1 }], ['3 + 1 + 5', { glass: 1, bold: 1, blue: 1 }],
+  ['3 + 1 + 2', { glass: 1, bold: 1, splash: 1 }], ['1 + 2 + 3 + 5 (chosen)', { bold: 1, splash: 1, glass: 1, blue: 1 }],
+  ['4 + 1 + 5', { curtains: 1, bold: 1, blue: 1 }], ['All five', { bold: 1, splash: 1, glass: 1, curtains: 1, blue: 1 }],
+];
+const RAIN_COLS = [['dz2', 12.5, 'Drizzle, midday'], ['ra1', 12.5, 'Light rain, midday'], ['ra2', 9.5, 'Rain, morning'], ['ra3', 12.5, 'Heavy rain, midday'], ['ra2', 21, 'Rain, night']];
+const rainRows = document.getElementById('rainRows');
+{
+  const hd = document.createElement('div'); hd.className = 'row heads rain';
+  hd.innerHTML = '<div></div>' + RAIN_COLS.map(c => `<div>${c[2]}</div>`).join(''); rainRows.appendChild(hd);
+}
+const comboQueue = [];
+for (const [name, R] of COMBOS) {
+  const row = document.createElement('div'); row.className = 'row rain';
+  const parts = Object.keys(R).map(k => ({ bold: 'bold streaks', splash: 'splashes', glass: 'drips on glass', curtains: 'curtains', blue: 'slate blue' })[k]);
+  row.innerHTML = `<div class="lab"><b>${name}</b><span>${parts.length ? parts.join(', ') : 'thin streaks only'}</span></div>`;
+  for (const [key, h] of RAIN_COLS) {
+    const S = STATES.find(s => s.key === key);
+    const dev = document.createElement('div'); dev.className = 'dev';
+    dev.innerHTML = `<canvas width="240" height="240"></canvas><div class="face">${faceHTML(S, h)}</div>`;
+    dev.onclick = () => openBig(S, { h, name: `${fmtTime(h)}, style ${name}` }, R);
+    row.appendChild(dev); comboQueue.push([dev.querySelector('canvas'), S, h, R]);
+  }
+  rainRows.appendChild(row);
+}
+const rows = document.getElementById('rows');
+let lastG = '', queue = [];
+const heads = document.createElement('div');
+heads.className = 'row heads';
+heads.innerHTML = '<div></div>' + TIMES.map(t => `<div>${t.name} (${fmtTime(t.h)})</div>`).join('');
+for (const S of STATES) {
+  if (S.g !== lastG) {
+    const h = document.createElement('h2'); h.textContent = S.g; rows.appendChild(h);
+    rows.appendChild(heads.cloneNode(true)); lastG = S.g;
+  }
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = `<div class="lab"><b>${S.name}</b><span>WMO ${S.codes.join(', ')}</span></div>`;
+  for (const T of TIMES) {
+    const dev = document.createElement('div'); dev.className = 'dev';
+    dev.innerHTML = `<canvas width="240" height="240"></canvas><div class="face">${faceHTML(S, T.h)}</div>`;
+    dev.onclick = () => openBig(S, { h: T.h, name: T.name.toLowerCase() }); dev._S = S; dev._h = T.h;
+    row.appendChild(dev);
+    queue.push([dev.querySelector('canvas'), S, T.h, null]);
+  }
+  rows.appendChild(row);
+}
+queue = comboQueue.concat(queue);
+(function drain() {
+  const t0 = performance.now();
+  while (queue.length && performance.now() - t0 < 30) { const [c, S, h, R] = queue.shift(); paint(c, S, h, 0, null, R || RAIN); }
+  if (queue.length) requestAnimationFrame(drain);
+})();
+
+const dlg = document.getElementById('dlg');
+function openBig(S, T, R = RAIN) {
+  const dev = document.getElementById('dlgDev');
+  paint(dev.querySelector('canvas'), S, T.h, 0, null, R);
+  dev.querySelector('.face').innerHTML = faceHTML(S, T.h);
+  document.getElementById('dlgCap').textContent = `${S.name} (WMO ${S.codes.join(', ')}), ${T.name}`;
+  dlg.showModal();
+}
+dlg.onclick = () => dlg.close();
+
+// Builder.
+const sel = document.getElementById('selState'), selT = document.getElementById('selTime'), selD = document.getElementById('selDrift');
+const useCover = document.getElementById('useCover'), selC = document.getElementById('selCover');
+STATES.forEach((S, i) => sel.add(new Option(`${S.g}: ${S.name}`, i)));
+const rc = document.getElementById('rainChecks');
+for (const [k, lab] of [['bold', '1 Bold streaks'], ['splash', '2 Splashes'], ['glass', '3 Drips on glass'], ['curtains', '4 Curtains'], ['blue', '5 Slate blue']]) {
+  const l = document.createElement('label'); l.style.cssText = 'font-weight:400;margin:0';
+  l.innerHTML = `<input type="checkbox" data-k="${k}"${RAIN[k] ? ' checked' : ''}> ${lab}`; rc.appendChild(l);
+  l.querySelector('input').onchange = e => {
+    RAIN = { ...RAIN, [k]: e.target.checked }; drawBig();
+    // Repaint the state rows below with the new style.
+    document.querySelectorAll('#rows .dev').forEach(d => queue.push([d.querySelector('canvas'), d._S, d._h]));
+    if (queue.length) requestAnimationFrame(function again() { const t0 = performance.now(); while (queue.length && performance.now() - t0 < 30) { const [c, S, h, R] = queue.shift(); paint(c, S, h, 0, null, R || RAIN); } if (queue.length) requestAnimationFrame(again); });
+  };
+}
+sel.value = STATES.findIndex(S => S.key === 'partly');
+function drawBig() {
+  const S = STATES[sel.value], h = +selT.value;
+  selC.disabled = !useCover.checked;
+  paint(document.querySelector('#bigDev canvas'), S, h, +selD.value, useCover.checked ? selC.value / 100 : null);
+  document.querySelector('#bigDev .face').innerHTML = faceHTML(S, h);
+  document.getElementById('codeOut').textContent = `WMO ${S.codes.join(', ')}`;
+  document.getElementById('timeOut').textContent = fmtTime(h) + (h < 12 ? ' AM' : ' PM');
+  document.getElementById('driftOut').textContent = `+${selD.value} min`;
+}
+let pending = false;
+const schedule = () => { if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; drawBig(); }); } };
+[sel, selT, selD, useCover, selC].forEach(e => e.addEventListener('input', schedule));
+drawBig();
+document.getElementById('showText').onchange = e => document.body.classList.toggle('hide-text', !e.target.checked);
+</script>
+</body>
+</html>

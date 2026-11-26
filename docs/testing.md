@@ -32,6 +32,7 @@ Send a line over USB serial (115200 baud):
 | `N` | Drop Wi-Fi (tests reconnecting) |
 | `A` / `AA` | Fire the water reminder / make every enabled reminder due |
 | `B?` / `Bx<speed>[,HHMM]` / `BR<duty>` | Auto-brightness state / run its clock fast (`Bx0` stops) / raw backlight duty 0-4095 |
+| `X<code>` / `X-` | Living sky shows that weather (an Open-Meteo WMO code, for example `X63` rain, `X95` thunderstorm) / back to the real weather. Not saved. |
 | `Z...` | Play a sound on the buzzer (sent by `sound-lab.html`) |
 | `SND?` | Print volume, clicks and every event's sound, then `[sound] end` |
 | `SNDP <event> <sound or ->` / `SNDC <event> <name>\|<repeat>,<gap>,<soft>:f0,f1,ms;...` | Pick a library sound for an event / save the event's own sound (the sound lab's Send) |
@@ -55,6 +56,8 @@ const db = JSON.parse(localStorage['desk_buddy.v1']);
 const t = new Date(); t.setHours(21, 0, 0, 0);
 db.offset = t - Date.now(); localStorage['desk_buddy.v1'] = JSON.stringify(db); location.reload();
 ```
+
+Living sky follows the sample forecast (or Mainly clear without Wi-Fi). To see another weather, set `db.wxCode` to a WMO code the same way (`db.wxCode = 75` heavy snow; `delete db.wxCode` to go back). `mockups/weather-sky-mockups.html` shows every state at five times of day.
 
 ## Checking a change that shouldn't change pixels
 

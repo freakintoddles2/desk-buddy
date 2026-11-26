@@ -8,7 +8,7 @@ It has no accounts, no cloud and no phone app. Wi-Fi is optional and only used f
 
 | Panel | What it does |
 |---|---|
-| Home | Clock, date, weather line and glance stats over a choice of faces (Sun ring, Living sky, Plain, Heat). Swipe up from the bottom edge to pick a face and what shows. |
+| Home | Clock, date, weather line and glance stats over a choice of faces (Sun ring, Living sky, which follows the weather, Plain, Heat). Swipe up from the bottom edge to pick a face and what shows. |
 | Weather | Now, hourly and 7-day from Open-Meteo (with Wi-Fi). Turn to scrub, press to switch. |
 | World | Cities with a 24-hour day/night ring. |
 | Focus | A focus timer on an edge dial. |

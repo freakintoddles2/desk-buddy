@@ -10,6 +10,7 @@
 #include "board.h"
 #include "buzzer.h"
 #include "net.h"
+#include "panels.h"
 #include "records.h"
 #include "reminders.h"
 #include "tray.h"
@@ -122,6 +123,8 @@ void poll() {
         board::injectButton(board::Button::LongPress);
       } else if (lineLen == 1 && line[0] == 'G') {
         board::injectButton(board::Button::HoldHome);  // the 3 s hold
+      } else if (line[0] == 'X' && lineLen > 1) {
+        homeTestSkyCode(line[1] == '-' ? -1 : atoi(line + 1));  // X<code>: Living sky's weather; X-: the real one
       } else if (line[0] == 'W') {
         app::injectSwipe(atoi(line + 1) >= 0 ? 1 : -1);
       } else if (lineLen > 1 && line[0] == 'T') {

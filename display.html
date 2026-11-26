@@ -1649,6 +1649,270 @@
     const MARIA = [[-.32, -.38, .3, .27], [-.6, .05, .29, .46], [.18, -.33, .19, .18], [.3, -.02, .22, .2],
         [.66, -.22, .13, .15], [-.12, .42, .21, .16], [.5, .25, .14, .18]];
 
+    // ---------- Living sky's weather (firmware skywx.cpp; designed in mockups/weather-sky-mockups.html) ----------
+    // One painter for every state: each WMO weather code sets cloud cover and darkness, how gray
+    // the sky goes, how much sun shows, rain or snow and how much, fog and lightning. Same hash
+    // and noise as the firmware, so the skies match. Painted to a canvas once per minute and code.
+    // [cover, tone, gray, dark, sun, precip, amt, fog, ice, bolt, showers]
+    const SKY_WX = {
+        0: [0, 0, 0, 0, 1], 1: [.14, 0, 0, 0, 1], 2: [.48, .12, .1, 0, 1], 3: [1, .62, .75, .12, .12],
+        45: [1, .15, .7, 0, .35, '', 0, .8], 48: [1, .15, .75, 0, .3, '', 0, .85, .5],
+        51: [.85, .35, .55, .05, .3, 'drizzle', .35], 53: [.95, .45, .7, .1, .15, 'drizzle', .65], 55: [1, .55, .8, .15, .05, 'drizzle', 1],
+        56: [1, .45, .8, .08, .08, 'drizzle', .7, 0, 1], 57: [1, .45, .8, .08, .08, 'drizzle', .7, 0, 1],
+        61: [.9, .5, .65, .1, .15, 'rain', .3], 63: [1, .65, .8, .2, .05, 'rain', .6], 65: [1, .8, .88, .32, 0, 'rain', 1],
+        66: [1, .6, .85, .15, 0, 'rain', .6, 0, 1], 67: [1, .6, .85, .15, 0, 'rain', .6, 0, 1],
+        71: [.9, .25, .7, -.04, .2, 'snow', .3], 73: [1, .3, .8, 0, .08, 'snow', .6], 75: [1, .4, .88, .06, 0, 'snow', 1, .25],
+        77: [1, .3, .8, 0, .08, 'grains', .7],
+        80: [.9, .5, .65, .1, .15, 'rain', .4, 0, 0, 0, 1], 81: [1, .65, .8, .2, .05, 'rain', .7, 0, 0, 0, 1], 82: [1, .8, .88, .32, 0, 'rain', 1, 0, 0, 0, 1],
+        85: [.9, .25, .7, -.04, .2, 'snow', .45, 0, 0, 0, 1], 86: [1, .3, .8, 0, .08, 'snow', .9, 0, 0, 0, 1],
+        95: [1, .95, .9, .45, 0, 'rain', .5, 0, 0, 1], 96: [1, 1, .92, .5, 0, 'hail', .55, 0, 0, 1], 99: [1, 1, .92, .5, 0, 'hail', .55, 0, 0, 1],
+    };
+    const SKY_NO_DATA = 1;   // Mainly clear without weather data
+    const skyLook = (code) => {
+        const [cover, tone, gray, dark, sun, p = '', amt = 0, fog = 0, ice = 0, bolt = 0, showers = 0] = SKY_WX[code] || SKY_WX[SKY_NO_DATA];
+        return { cover, tone, gray, dark, sun, p, amt, fog, ice, bolt: !!bolt, showers: !!showers };
+    };
+    const skyCoversBody = (code) => skyLook(code).sun < 1;
+    // The weather Living sky shows: db.wxCode (a test override), else the sample forecast's
+    // current conditions; without Wi-Fi (no weather data), Mainly clear.
+    const SAMPLE_CODE = { clear: 0, partly: 2, cloudy: 3, rain: 63 };
+    const skyCode = () => {
+        if (Number.isInteger(db.wxCode)) return db.wxCode;
+        if (!db.wifi) return SKY_NO_DATA;
+        return SAMPLE_CODE[wxData().now.cond] ?? SKY_NO_DATA;
+    };
+    const SKY_NOISE = new Uint8Array(64 * 64);
+    { let s = 12345; for (let i = 0; i < SKY_NOISE.length; i++) { s = (Math.imul(s, 1103515245) + 12345) >>> 0; SKY_NOISE[i] = s >>> 24; } }
+    const skyVnoise = (x, y) => {
+        const xi = Math.floor(x), yi = Math.floor(y);
+        let fx = x - xi, fy = y - yi; fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+        const x0 = xi & 63, y0 = yi & 63, x1 = (x0 + 1) & 63, y1 = (y0 + 1) & 63;
+        const a = SKY_NOISE[y0 * 64 + x0], b = SKY_NOISE[y0 * 64 + x1], c = SKY_NOISE[y1 * 64 + x0], d = SKY_NOISE[y1 * 64 + x1];
+        return ((a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy) / 255;
+    };
+    const skyCloudN = (X, Y, drift) => .5 * skyVnoise((X + drift) / 120, Y / 42) + .3 * skyVnoise((X + drift * 1.5) / 50, Y / 20) + .2 * skyVnoise((X + drift * 2) / 21, Y / 10);
+    const skyHash = (n) => { n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+    const SKY_BOLT = (() => {
+        let s = 7; const rnd = () => (s = (Math.imul(s, 1103515245) + 12345) >>> 0, (s >>> 24) / 255);
+        const main = [[432, 120]];
+        for (let i = 0; i < 10; i++) { const [x, y] = main[main.length - 1]; const r1 = rnd(), r2 = rnd(); main.push([x + (i % 2 ? 1 : -1) * (6 + 10 * r1) - 1, y + 16 + 10 * r2]); }
+        const [fx, fy] = main[3], fork = [[fx, fy]];
+        for (let i = 0; i < 4; i++) { const [x, y] = fork[fork.length - 1]; const r1 = rnd(), r2 = rnd(); fork.push([x - 6 - 6 * r1, y + 12 + 8 * r2]); }
+        const all = [...main, ...fork];
+        return { lines: [main, fork], box: [Math.min(...all.map((p) => p[0])) - 22, 100, Math.max(...all.map((p) => p[0])) + 22, Math.max(...all.map((p) => p[1])) + 20] };
+    })();
+    const skyBoltDist = (X, Y) => {
+        let best = 1e9;
+        for (const line of SKY_BOLT.lines) for (let i = 0; i < line.length - 1; i++) {
+            const [ax, ay] = line[i], [bx, by] = line[i + 1];
+            const dx = bx - ax, dy = by - ay, t = clamp(((X - ax) * dx + (Y - ay) * dy) / (dx * dx + dy * dy), 0, 1);
+            const ex = X - ax - dx * t, ey = Y - ay - dy * t; best = Math.min(best, ex * ex + ey * ey);
+        }
+        return Math.sqrt(best);
+    };
+    const BAYER8 = [[0, 32, 8, 40, 2, 34, 10, 42], [48, 16, 56, 24, 50, 18, 58, 26], [12, 44, 4, 36, 14, 46, 6, 38], [60, 28, 52, 20, 62, 30, 54, 22], [3, 35, 11, 43, 1, 33, 9, 41], [51, 19, 59, 27, 49, 17, 57, 25], [15, 47, 7, 39, 13, 45, 5, 37], [63, 31, 55, 23, 61, 29, 53, 21]];
+    // Paint Living sky with the weather into an n x n canvas. body: paint the sun or moon in
+    // (only when clouds cover it; otherwise the sun/moon node sits on top, as on the device).
+    const paintWeatherSky = (canvas, sc, F, code, drift, body) => {
+        const S = skyLook(code);
+        const n = canvas.width, k = 480 / n, ctx = canvas.getContext('2d'), img = ctx.createImageData(n, n), px = img.data;
+        const c01 = (a) => a.map((v) => v / 255);
+        const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+        const cl01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+        const sstep = (a, b, v) => { const t = cl01((v - a) / (b - a)); return t * t * (3 - 2 * t); };
+        const WHITE = [1, 1, 1], BLACK = [0, 0, 0];
+        const top = c01(skyTopAt(sc.keys, sc.h)), bot = c01(skyAt(sc.keys, sc.h));
+        const { rise, set } = sc.st, hour = sc.h, night = sc.night;
+        const day = sstep(rise - .8, rise + 1.2, hour) * (1 - sstep(set - .6, set + 1, hour));
+        const cover = S.cover, full = cover >= .85, th = .72 - cover * .42, soft = .1, cover01 = full ? (cover - .85) / .15 : 0;
+        let far = 0; for (const cx of [0, 480]) for (const cy of [0, 480]) far = Math.max(far, Math.hypot(cx - sc.x, cy - sc.y));
+        const glowR = far * F.glowReach, glowAmt = (night ? F.glowNight + F.glowNightLit * moonLit(sc.age) : F.glowDay) * (.35 + .65 * S.sun);
+        const tint = night ? [170 / 255, 180 / 255, 1] : c01(hexRgb(F.glowTint || '#fff1c8'));
+        const bodyR = night ? F.moonR : F.sunR, bodyCol = night ? c01(hexRgb('#dfe6ff')) : c01(hexRgb('#ffc34d'));
+        const litDay = mix(WHITE, bot, .28 + .35 * (1 - day)), darkDay = mix([.36, .40, .47], [.17, .19, .24], S.tone);
+        const lit = mix([.17, .19, .27], litDay, day), dark = mix([.07, .075, .1], darkDay, day);
+        const fogCol = mix([.22, .24, .29], mix([.68, .71, .76], bot, .2), day);
+        const P = S.p, wet = P === 'rain' || P === 'drizzle' || P === 'hail', drz = P === 'drizzle', storm = S.bolt;
+        const slate = storm ? mix([.06, .07, .12], [.2, .25, .33], day) : mix([.16, .2, .3], [.36, .46, .6], day);
+        const blueAmt = wet ? .16 + .12 * S.amt : 0;
+        const pCol = P === 'snow' || P === 'grains' ? mix([.78, .82, .9], WHITE, day) : S.ice ? mix([.55, .68, .78], [.82, .95, 1], day) : mix([.45, .52, .65], [.80, .86, .94], day);
+        const overhead = mix(lit, dark, S.tone), hid = full ? (1 - S.sun) * day : 0;
+        const skyRow = (Y) => {
+            let sky = mix(top, bot, cl01(Y / 480));
+            const lum = .3 * sky[0] + .59 * sky[1] + .11 * sky[2];
+            sky = mix(sky, [lum, lum, lum * 1.04], S.gray);
+            sky = S.dark >= 0 ? sky.map((v) => v * (1 - S.dark)) : mix(sky, [.86, .9, .95], -S.dark * day * 4);
+            if (S.ice) sky = mix(sky, [.62, .78, .88], .12 * S.ice * (.3 + .7 * day));
+            if (blueAmt) sky = mix(sky, slate, blueAmt);
+            if (full) sky = mix(sky, overhead, .7);
+            return sky;
+        };
+        const water = (Y, u, v, base) => {
+            const d = Math.hypot(u, v);
+            let wc = mix(base, skyRow(Y - v * 60), .45);
+            wc = mix(wc, WHITE, .14 + .14 * day);
+            wc = mix(wc, BLACK, sstep(.55, 1, d) * (v < .2 ? .45 : .18));
+            const cau = Math.hypot(u, v - .45); if (cau < .45) wc = mix(wc, WHITE, (1 - cau / .45) * .35);
+            const gl = Math.hypot(u + .32, v + .42); if (gl < .18) wc = mix(wc, WHITE, (1 - gl / .18) * .8);
+            return wc;
+        };
+        const snowLayers = P === 'grains' ? [[9, .9, .6 * S.amt, 3]] : P === 'snow' ? [[30 - 10 * S.amt, 2.4, .3 + .45 * S.amt, 1], [15 - 4 * S.amt, 1.3, .35 + .45 * S.amt, 2]] : [];
+        for (let y = 0; y < n; y++) {
+            const Y = (y + .5) * k, sky = skyRow(Y);
+            const oyC2 = ((Y - 245) / 92) ** 2, oyB2 = ((Y - 240) / 100) ** 2;
+            for (let x = 0; x < n; x++) {
+                const X = (x + .5) * k, i = (y * n + x) * 4;
+                let c = sky;
+                const gdx = X - sc.x, gdy = Y - sc.y, gd = Math.hypot(gdx, gdy);
+                if (gd < glowR) { const g = 1 - gd / glowR; c = mix(c, tint, g * g * glowAmt); }
+                if (cover > 0) {
+                    const nz = skyCloudN(X, Y, drift) + (.5 - Y / 480) * .12;
+                    const cl = full ? 1 : sstep(th - soft, th + soft, nz);
+                    if (cl > 0) {
+                        const core = sstep(th, th + .25, nz);
+                        const shade = full ? cl01(S.tone + (nz - .5) * .45) : cl01(S.tone * (.3 + .7 * core) + (1 - core) * .1);
+                        const behind = 1 - sstep(.6, 1.2, ((X - 240) / 185) ** 2 + oyB2);
+                        const alpha = full ? .82 + .18 * Math.max(cover01, sstep(th - .1, th + .1, nz)) : (.75 + .25 * core) * (1 - .5 * behind * (1 - S.tone));
+                        c = mix(c, mix(lit, dark, shade), cl * alpha);
+                    }
+                }
+                if (body && gd < bodyR + 1.5 * k) {
+                    const vis = night ? Math.max(S.sun, .04) : S.sun;
+                    if (vis > 0) c = mix(c, mix(c, bodyCol, .3 + .7 * vis), cl01(bodyR - gd + .5) * Math.min(1, vis * 2.5));
+                }
+                if (S.ice) c = mix(c, [.7, .86, .95], S.ice * .14 * (.4 + .6 * day));
+                if (blueAmt) c = mix(c, slate, blueAmt * .8);
+                if (hid > 0) { const sd = Math.hypot(gdx, gdy * 1.25); if (sd < 330) c = mix(c, mix(bot, WHITE, .3), (1 - sd / 330) ** 2 * (storm ? .3 : .38) * hid); }
+                let flash = 0;
+                if (storm) {
+                    if (day > 0) c = mix(c, mix(bot, WHITE, .1), sstep(300, 470, Y) * .38 * day);
+                    const fr = 150 + 130 * (1 - day), fl = Math.hypot(X - 420, Y - 150);
+                    if (fl < fr) { const t = 1 - fl / fr; flash = t * Math.sqrt(t); c = mix(c, mix([.6, .55, .95], [.75, .78, .95], day), flash * (.45 + .25 * (1 - day))); }
+                    const b = SKY_BOLT.box;
+                    if (X > b[0] && X < b[2] && Y > b[1] && Y < b[3]) {
+                        const d = skyBoltDist(X, Y);
+                        if (d < 14) c = mix(c, [.78, .82, 1], (1 - d / 14) ** 2 * .6);
+                        if (d < 2.2) c = mix(c, WHITE, cl01(2.2 - d));
+                    }
+                }
+                const outside = P ? sstep(.75, 1.15, ((X - 240) / 175) ** 2 + oyC2) : 1;
+                if (P) {
+                    const calm = 1 - .65 * (1 - outside);
+                    let a = 0;
+                    if (wet) {
+                        const slant = drz ? .12 : .16 + .14 * S.amt, sp = drz ? 6 : 10 - 4 * S.amt, u = X + Y * slant, col = Math.floor(u / sp);
+                        if (skyHash(col * 3 + 1) < (drz ? .4 + .5 * S.amt : .35 + .55 * S.amt)) {
+                            const len = (drz ? 5 : 16 + 22 * S.amt) * (.6 + .4 * skyHash(col * 3 + 2)), period = drz ? 26 : 70;
+                            const ph = (((Y + skyHash(col * 3 + 3) * period + drift * 3) % period) + period) % period;
+                            const w = Math.abs(u / sp - col - (.2 + .6 * skyHash(col * 7 + 5))) * sp, hw = drz ? 1.5 : 1.7;
+                            if (ph < len && w < hw) a = (ph / len) ** .75 * cl01(hw - w) * (ph > len * .82 ? 1.35 : 1) * (drz ? .6 + .25 * S.amt : .6 + .3 * S.amt);
+                        }
+                        if (P === 'hail') {
+                            const cs = 22, yy = Y + drift * 2, gx = Math.floor(X / cs), gy = Math.floor(yy / cs);
+                            if (skyHash(gx * 911 + gy * 977) < .35) {
+                                const d = Math.hypot(X - gx * cs - (skyHash(gx * 13 + gy * 7 + 1) * .7 + .15) * cs, yy - gy * cs - (skyHash(gx * 5 + gy * 17 + 2) * .7 + .15) * cs);
+                                if (d < 2.6) c = mix(c, [.93, .96, 1], cl01(2.6 - d) * .9 * calm);
+                            }
+                        }
+                    } else {
+                        for (const [cs, r, dens, sd] of snowLayers) {
+                            const yy = Y + drift * (sd === 1 ? 1.4 : .8), gx = Math.floor(X / cs), gy = Math.floor(yy / cs);
+                            if (skyHash(Math.imul(gx, 73856093) ^ Math.imul(gy, 19349663) ^ sd) < dens) {
+                                const d = Math.hypot(X - gx * cs - (skyHash(gx * 31 + gy * 17 + sd * 5) * .7 + .15) * cs, yy - gy * cs - (skyHash(gx * 11 + gy * 29 + sd * 3) * .7 + .15) * cs);
+                                if (d < r + .6) a = Math.max(a, cl01(r + .5 - d) * (sd === 1 ? .95 : .7));
+                            }
+                        }
+                    }
+                    if (storm) a *= day + (1 - day) * (.25 + .75 * flash);
+                    if (a > 0) c = mix(c, wet ? mix(pCol, WHITE, .35) : pCol, cl01(a * calm));
+                    if (wet && Y > 340) {
+                        const cs = 36 - 10 * S.amt, gx = Math.floor(X / cs), gy = Math.floor(Y / cs);
+                        if (skyHash(Math.imul(gx, 92821) ^ Math.imul(gy, 68917)) < .25 + .4 * S.amt) {
+                            const sx = gx * cs + (.25 + .5 * skyHash(gx * 7 + gy * 3)) * cs, sy = gy * cs + (.4 + .4 * skyHash(gx * 5 + gy * 11)) * cs;
+                            const rx = (drz ? 3.5 : 5.5 + 2.5 * S.amt) * (.7 + .5 * skyHash(gx + gy * 31)), ry = rx * .26;
+                            const dx = X - sx, dy = Y - sy, e = Math.sqrt((dx / rx) ** 2 + (dy / ry) ** 2);
+                            let sa = Math.abs(e - 1) < .4 ? (1 - Math.abs(e - 1) / .4) * (dy < 0 ? .45 : .8) : 0;
+                            for (const [ox, oy, rr] of [[-.55, -1.0, 1.1], [.6, -1.15, 1], [.05, -1.5, .9]]) {
+                                const d = Math.hypot(dx - ox * rx, dy - oy * rx * .7); if (d < rr) sa = Math.max(sa, cl01(rr - d + .3) * .75);
+                            }
+                            if (sa > 0) c = mix(c, mix(pCol, WHITE, .3), sa * sstep(340, 390, Y));
+                        }
+                    }
+                }
+                if (wet) {
+                    const calmG = 1 - .45 * (1 - outside);
+                    let hit = false;
+                    for (const [cw, off, layer] of [[44, 0, 1], [44, 22, 2]]) {
+                        if (hit) break;
+                        const col = Math.floor((X + off) / cw);
+                        if (skyHash(col * 7919 + layer * 104729) > (drz ? .2 : .3 + .4 * S.amt)) continue;
+                        const r = drz ? 3.4 + 1.2 * skyHash(col * 31 + layer) : 5.5 + 3.5 * skyHash(col * 31 + layer);
+                        const hy = 70 + 360 * ((skyHash(col * 53 + layer * 3) * .35 + col * .618 + layer * .5) % 1);
+                        const len = (drz ? 40 : 70 + 170 * S.amt) * (.5 + .7 * skyHash(col * 71 + layer));
+                        if (!(Y > hy - len - 2 && Y < hy + r * 1.2)) continue;
+                        const ph = skyHash(col * 97 + layer) * 6.28, cxBase = col * cw - off + cw / 2 + (skyHash(col * 13 + layer) - .5) * (cw - 26);
+                        const wob = (yy) => cxBase + 2.2 * Math.sin(yy / 23 + ph) + 1.2 * Math.sin(yy / 9 + ph * 2);
+                        const cx = wob(Y);
+                        if (Y > hy - r * 1.4) {
+                            const v = (Y - hy) / r, w = v < 0 ? 1 - .5 * Math.min(1, -v / 1.4) : 1, u = (X - wob(hy)) / r / w;
+                            const d = v < 0 ? Math.hypot(u, v / 1.4) : Math.hypot(u, v);
+                            if (d < 1) { c = mix(c, water(Y, u, v < 0 ? v / 1.4 : v, c), cl01((1 - d) * r * 1.4) * calmG); hit = true; continue; }
+                        }
+                        const t = (hy - Y) / len, tw = r * (.5 - .3 * t);
+                        if (t > 0 && t < 1 && Math.abs(X - cx) < tw + .8) {
+                            const e = Math.abs(X - cx) / tw;
+                            let tc = mix(c, WHITE, (.12 + .1 * day) * (1 - e) * (1 - .6 * t));
+                            tc = mix(tc, BLACK, .22 * sstep(.45, 1, e) * (1 - .6 * t));
+                            c = mix(c, tc, cl01(tw + .8 - Math.abs(X - cx)) * calmG); hit = true;
+                        }
+                        const bi = Math.floor((hy - Y + 6) / 26);
+                        if (bi >= 1 && bi * 26 < len && skyHash(col * 331 + bi * 17 + layer) < .5) {
+                            const by = hy - bi * 26 + 6 - 8 * skyHash(col + bi), bx = wob(by) + (skyHash(col * 3 + bi) - .5) * 6, br = 1.8 + 1.6 * skyHash(col * 5 + bi);
+                            const u = (X - bx) / br, v = (Y - by) / br, d = Math.hypot(u, v);
+                            if (d < 1) { c = mix(c, water(Y, u, v, c), cl01((1 - d) * br * 1.5) * calmG); hit = true; }
+                        }
+                    }
+                    if (!hit) {
+                        const cs = drz ? 18 : 28 - 6 * S.amt, gx = Math.floor(X / cs), gy = Math.floor(Y / cs);
+                        if (skyHash(Math.imul(gx, 19349663) ^ Math.imul(gy, 83492791) ^ 5) < (drz ? .6 : .35 + .25 * S.amt)) {
+                            const br = (drz ? 1.3 : 1.8) + (drz ? 1.5 : 2.2) * skyHash(gx * 3 + gy * 7);
+                            const bx = gx * cs + br + 1 + (cs - 2 * br - 2) * skyHash(gx * 17 + gy * 5), by = gy * cs + br + 1 + (cs - 2 * br - 2) * skyHash(gx * 23 + gy * 13);
+                            const u = (X - bx) / br, v = (Y - by) / br, d = Math.hypot(u, v);
+                            if (d < 1) c = mix(c, water(Y, u, v, c), cl01((1 - d) * br * 1.5) * calmG * .9);
+                        }
+                    }
+                }
+                if (S.fog) c = mix(c, fogCol, cl01(S.fog * (.3 + .7 * Y / 480) * (.75 + .45 * skyVnoise((X + drift * .5) / 90, Y / 22))));
+                if (full) {   // bright covered skies (snow, fog, pale overcast): darken softly behind the clock and date
+                    const inside = 1 - sstep(0, 2.4, ((X - 240) / 175) ** 2 + oyC2);
+                    const lum = .3 * c[0] + .59 * c[1] + .11 * c[2];
+                    if (inside > 0 && lum > .45) c = mix(c, BLACK, (lum - .45) * .7 * inside);
+                }
+                const t = (BAYER8[y & 7][x & 7] + .5) / 64;
+                px[i] = Math.min(31, Math.floor(cl01(c[0]) * 31 + t)) * 255 / 31;
+                px[i + 1] = Math.min(63, Math.floor(cl01(c[1]) * 63 + t)) * 255 / 63;
+                px[i + 2] = Math.min(31, Math.floor(cl01(c[2]) * 31 + t)) * 255 / 31;
+                px[i + 3] = 255;
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+    };
+    // One painted sky per minute and weather, kept as an image so re-renders (and the
+    // customize previews, scaled down) reuse it.
+    const weatherSkyCache = new Map();
+    const weatherSkyImage = (F, sc, code, body) => {
+        const key = `${sc.d.getFullYear()}-${sc.d.getMonth()}-${sc.d.getDate()} ${sc.d.getHours()}:${sc.d.getMinutes()} ${code} ${body}`;
+        let url = weatherSkyCache.get(key);
+        if (!url) {
+            const cv = document.createElement('canvas'); cv.width = cv.height = 480;
+            paintWeatherSky(cv, sc, F, code, sc.d.getHours() * 60 + sc.d.getMinutes(), body);
+            url = cv.toDataURL();
+            if (weatherSkyCache.size > 8) weatherSkyCache.clear();
+            weatherSkyCache.set(key, url);
+        }
+        return url;
+    };
+
     // ---------- Home faces ----------
     // Mirrors FACES in firmware/desk_buddy/src/home.cpp: same order, fields and values, so a face
     // tried here moves to the device by copying its entry (the device keeps the index, this page
@@ -1658,12 +1922,13 @@
     const FACE_DEFAULTS = {
         body: true, bg: 'dark', ring: false, path: 'ring', sunR: 16, moonR: 15.84, moonHalo: false,
         glowReach: .38, glowDay: .22, glowNight: .03, glowNightLit: .09, glowTint: null,
-        day: {}, night: {}, lightBg: false, paint: null, daySprite: true, clockFont: null, upper: false,
+        day: {}, night: {}, lightBg: false, paint: null, daySprite: true, clockFont: null, upper: false, weather: false,
     };
     const FACES = [
         { key: 'sun', name: 'Sun ring', ring: true, moonHalo: true },
         { key: 'sky', name: 'Living sky', bg: 'sky', path: 'arc', sunR: 22, moonR: 20.4, glowReach: .30, glowDay: .35,
-          glowNight: .025, glowNightLit: .075, glowTint: '#fff1c8', day: { dim: '#e6ecf5' }, night: { dim: '#e6ecf5' }, lightBg: true },
+          glowNight: .025, glowNightLit: .075, glowTint: '#fff1c8', day: { dim: '#e6ecf5' }, night: { dim: '#e6ecf5' }, lightBg: true,
+          weather: true },   // the sky follows the weather (paintWeatherSky)
         { key: 'plain', name: 'Plain', body: false },
         // Heat: a coworker's concept, TEST ONLY. Synthwave sunset and palms by day, neon skyline at night.
         { key: 'heat', name: 'Heat', path: 'sink', moonR: 20.4, moonHalo: true,
@@ -1745,6 +2010,13 @@
     const faceNodes = (F, sc) => {
         if (!F.body) return [];
         if (F.paint) return [...F.paint(sc, F), ...(sc.night || F.daySprite ? [bodyNode(F, sc)] : [])];
+        if (F.weather) {
+            // Clouds cover the sun or moon: the painter draws it dimmed and there's no sprite.
+            const code = skyCode(), covered = skyCoversBody(code);
+            const bg = el('div', 'home-glow');
+            bg.style.background = `center / 100% 100% no-repeat url(${weatherSkyImage(F, sc, code, covered)})`;
+            return covered ? [bg] : [bg, bodyNode(F, sc)];
+        }
         const far = Math.max(...[[0, 0], [480, 0], [0, 480], [480, 480]].map(([cx, cy]) => Math.hypot(cx - sc.x, cy - sc.y)));
         const amt = sc.night ? F.glowNight + F.glowNightLit * moonLit(sc.age) : F.glowDay;
         const tint = sc.night ? [170, 180, 255] : F.glowTint ? hexRgb(F.glowTint) : skyAt(sc.keys, sc.h);
@@ -2948,7 +3220,7 @@
     // Settings > Sound > Sounds: each event's sound, picked from its choices (no audio here).
     // Written by firmware/desk_buddy/tools/gen_sounds.js from sound-lab.html.
     // SOUND_CHOICES begin
-    const SOUND_CHOICES = {"cats":["Signature startup","Timers and alerts","Focus and calm","Reminders","Controls and UI","Games","Fun and effects","Appliances","Melodies","System","Desk buddy"],"sounds":[["Sunrise bloom",0],["Open fifths hello",0],["Knob spin-up",0],["Chime up",1],["Ding dong",1],["Warble alarm",1],["Kitchen timer",1],["Microwave done",1],["Triple beep",1],["Gentle wake",1],["Rising alert",1],["3, 2, 1, go",1],["Last seconds tick",1],["Bell ring",1],["Soft knock",1],["Halfway there",1],["Focus start",2],["Focus end",2],["Break over",2],["Breathe in",2],["Breathe out",2],["Bell with fake fade",2],["Sunrise",2],["Gentle nudge",2],["Check",2],["Water drop",3],["Stand up",3],["Look away",3],["Tap on the shoulder",3],["Tick",4],["Soft tick",4],["Double tick",4],["Letter typed",4],["Press",4],["Long press",4],["Back",4],["Swipe whoosh",4],["Swipe back",4],["Tray open",4],["Tray close",4],["Toggle on",4],["Toggle off",4],["Edge bump",4],["Saved",4],["Success",4],["Nope",4],["Paddle hit",5],["Wall bounce",5],["Serve",5],["Miss",5],["New best",5],["Go",5],["Dice roll",5],["Coin flip",5],["Level up",5],["Game over",5],["Power-up",5],["Laser",5],["Jump",5],["Gem pickup",5],["Bonus",5],["Correct",5],["Wrong",5],["Draw",5],["Fanfare",5],["Explosion",5],["Siren",6],["Yelp siren",6],["Robot chatter",6],["Bird chirp",6],["Cricket",6],["Typewriter ding",6],["Old phone ring",6],["Truck backing up",6],["Morse: SOS",6],["Morse: hi",6],["Sad trombone",6],["Ta-da",6],["Drum roll",6],["Clock tick-tock",6],["Sci-fi warp",6],["Static",6],["Raspberry",6],["Fake chord",6],["Sparkle",6],["Washer: The Trout (Schubert)",7],["Garbage truck: Für Elise",7],["Washer: cycle done",7],["Dryer: all dry",7],["Washer: laundry waltz",7],["Dishwasher: sparkly clean",7],["Fridge: door left open",7],["Rice cooker: ready",7],["Appliance: power on",7],["Appliance: power off",7],["Appliance: button beep",7],["Appliance: door open alert",7],["The Entertainer (Joplin)",8],["Ode to Joy (Beethoven)",8],["Twinkle Twinkle",8],["Happy Birthday",8],["Frère Jacques",8],["Westminster chimes",8],["Jingle Bells",8],["Brahms' Lullaby",8],["Hall of the Mountain King (Grieg)",8],["Morning Mood (Grieg)",8],["Eine kleine Nachtmusik (Mozart)",8],["Can-can (Offenbach)",8],["William Tell gallop (Rossini)",8],["Greensleeves",8],["Connected",9],["Disconnected",9],["Error (low, buzzy)",9],["Simple startup",9],["Update done",9],["Low tick",10],["Felt click",10],["Wood tick",10],["Bright chirp",10],["Soft thock",10],["Click-clack",10],["Firm click",10],["Low bloop",10],["Drop",10],["Two steps down",10],["Home chime",10],["Swoop home",10],["Typewriter tap",10],["Soft tap",10],["Pebble",10],["Low tap",10],["Tap down",10],["Click on",10],["Click off",10],["Low bump",10],["Edge bump",10],["Three bells",10],["Two up",10],["Soft in",10],["Soft out",10],["Rise",10],["Fall",10],["Pop",10],["Rally climb",10],["Thud",10],["Tick",10],["Wah-wah",10],["Sharp beep",10],["Double",10],["Speed chirp",10],["Rattle",10],["Tumble",10],["Spinning coin",10],["Ping",10],["Sun ring sweep",10],["Hel-lo",10]],"events":[["Knob turn",[116,117,118,119],116],["Knob press",[120,121,122,123],120],["Hold to go back",[-1,124,125],-1],["Hold to go Home",[-1,126,127],-1],["Letter typed",[129,128,130,-1],129],["Letter deleted",[132,131,-1],132],["Timer finished",[137,3,9,4],137],["Focus started",[-1,16,138],-1],["Focus finished",[17,21,4],17],["Breathe in",[139,141,-1],139],["Breathe out",[140,142,-1],140],["Stand-up reminder",[23,26,28],23],["Water reminder",[23,25,28],23],["Eye break",[23,27,28],23],["Habit checked off",[24,44,59,43],24],["Pong serve",[48,-1],48],["Pong hit",[46,143],46],["Pong miss",[49,147,62],49],["New best score",[64,50,54],64],["Reflex go",[51,148,149],51],["Reflex too early",[45,113],45],["Reflex time",[150,24,44],150],["Dice roll",[52,151,152],52],["Coin flip",[53,153,154],53],["Startup",[1,0,155,156,2],1],["Wi-Fi connected",[44,111,-1],44],["Something failed",[113,45,-1],113]]};
+    const SOUND_CHOICES = {"cats":["Signature startup","Timers and alerts","Focus and calm","Reminders","Controls and UI","Games","Fun and effects","Appliances","Melodies","System","Desk buddy"],"sounds":[["Sunrise bloom",0],["Open fifths hello",0],["Knob spin-up",0],["Chime up",1],["Ding dong",1],["Warble alarm",1],["Kitchen timer",1],["Microwave done",1],["Triple beep",1],["Gentle wake",1],["Rising alert",1],["3, 2, 1, go",1],["Last seconds tick",1],["Bell ring",1],["Soft knock",1],["Halfway there",1],["Focus start",2],["Focus end",2],["Break over",2],["Breathe in",2],["Breathe out",2],["Bell with fake fade",2],["Sunrise",2],["Gentle nudge",2],["Check",2],["Water drop",3],["Stand up",3],["Look away",3],["Tap on the shoulder",3],["Tick",4],["Soft tick",4],["Double tick",4],["Letter typed",4],["Press",4],["Long press",4],["Back",4],["Swipe whoosh",4],["Swipe back",4],["Tray open",4],["Tray close",4],["Toggle on",4],["Toggle off",4],["Edge bump",4],["Saved",4],["Success",4],["Nope",4],["Paddle hit",5],["Wall bounce",5],["Serve",5],["Miss",5],["New best",5],["Go",5],["Dice roll",5],["Coin flip",5],["Level up",5],["Game over",5],["Power-up",5],["Laser",5],["Jump",5],["Gem pickup",5],["Bonus",5],["Correct",5],["Wrong",5],["Draw",5],["Fanfare",5],["Explosion",5],["Siren",6],["Yelp siren",6],["Robot chatter",6],["Bird chirp",6],["Cricket",6],["Typewriter ding",6],["Old phone ring",6],["Truck backing up",6],["Morse: SOS",6],["Morse: hi",6],["Sad trombone",6],["Ta-da",6],["Drum roll",6],["Clock tick-tock",6],["Sci-fi warp",6],["Static",6],["Raspberry",6],["Fake chord",6],["Sparkle",6],["Washer: The Trout (Schubert)",7],["Garbage truck: Für Elise",7],["Washer: cycle done",7],["Dryer: all dry",7],["Washer: laundry waltz",7],["Dishwasher: sparkly clean",7],["Fridge: door left open",7],["Rice cooker: ready",7],["Appliance: power on",7],["Appliance: power off",7],["Appliance: button beep",7],["Appliance: door open alert",7],["The Entertainer (Joplin)",8],["Ode to Joy (Beethoven)",8],["Twinkle Twinkle",8],["Happy Birthday",8],["Frère Jacques",8],["Westminster chimes",8],["Jingle Bells",8],["Brahms' Lullaby",8],["Hall of the Mountain King (Grieg)",8],["Morning Mood (Grieg)",8],["Eine kleine Nachtmusik (Mozart)",8],["Can-can (Offenbach)",8],["William Tell gallop (Rossini)",8],["Greensleeves",8],["Connected",9],["Disconnected",9],["Error (low, buzzy)",9],["Simple startup",9],["Update done",9],["Low tick",10],["Felt click",10],["Wood tick",10],["Bright chirp",10],["Soft thock",10],["Click-clack",10],["Firm click",10],["Low bloop",10],["Drop",10],["Two steps down",10],["Home chime",10],["Swoop home",10],["Typewriter tap",10],["Soft tap",10],["Pebble",10],["Low tap",10],["Tap down",10],["Click on",10],["Click off",10],["Low bump",10],["Edge bump",10],["Three bells",10],["Two up",10],["Soft in",10],["Soft out",10],["Rise",10],["Fall",10],["Pop",10],["Rally climb",10],["Thud",10],["Tick",10],["Wah-wah",10],["Sharp beep",10],["Double",10],["Speed chirp",10],["Rattle",10],["Tumble",10],["Spinning coin",10],["Ping",10],["Sun ring sweep",10],["Hel-lo",10]],"events":[["Knob turn",[116,117,118,119],116],["Knob press",[120,121,122,123],120],["Hold to go back",[-1,124,125],-1],["Hold to go Home",[-1,126,127],-1],["Letter typed",[129,128,130,-1],129],["Letter deleted",[132,131,-1],132],["Timer finished",[137,3,9,4],137],["Focus started",[-1,16,138],-1],["Focus finished",[17,21,4],17],["Breathe in",[139,141,-1],139],["Breathe out",[140,142,-1],140],["Stand-up reminder",[23,26,28],23],["Water reminder",[23,25,28],23],["Eye break",[23,27,28],23],["Habit checked off",[24,44,59,43],24],["Pong serve",[48,-1],48],["Pong hit",[46,143],46],["Pong miss",[49,147,62],49],["New best score",[64,50,54],64],["Reflex go",[51,148,149],51],["Reflex too early",[45,113],45],["Reflex time",[150,24,44],150],["Dice roll",[52,151,152],52],["Coin flip",[53,153,154],53],["Startup",[87,1,0,155,156],87],["Wi-Fi connected",[44,111,-1],44],["Something failed",[113,45,-1],113]]};
     // SOUND_CHOICES end
     // Picks by event index: a SOUND_CHOICES.sounds index, -1 = no sound.
     const sndPick = (e) => (db.sndPicks || {})[e] ?? SOUND_CHOICES.events[e][2];

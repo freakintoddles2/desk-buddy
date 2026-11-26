@@ -34,6 +34,7 @@
 #include "store.h"
 #include "theme.h"
 #include "timers.h"
+#include "skywx.h"
 #include "sun.h"
 #include "tz.h"
 #include "weather.h"
@@ -71,8 +72,10 @@ using dither::to565;
 // time of day), the 24-hour ring if on, then a glow around the sun or moon. The sun/moon itself
 // is a sprite on top on Home (sprites.h, moon.h) and painted in on the previews. A face that
 // needs more (Heat's palms and skyline) sets paint to its own painter instead.
-// Paint budget: Sun ring ~435 ms, Living sky ~181 ms per full 480 px paint on core 0, once a
-// minute; keep a new face under ~1 s (~2 s felt laggy in testing).
+// Paint budget: Sun ring ~600 ms per full 480 px paint on core 0, once a minute; keep a new face
+// under ~1 s (~2 s felt laggy in testing). Living sky with weather (skywx.cpp) is ~0.3 s clear,
+// ~0.6-0.8 s cloudy or foggy, ~1.2-1.6 s rain or snow and ~2 s a storm (2026-11-26, measured on
+// core 0); the last painted sky stays up meanwhile, so only the once-a-minute update waits.
 enum class Bg : uint8_t { DARK, SKY };     // the screen color, or the sky's top-to-horizon gradient
 // The sun/moon rides the ring, or an arc over the upper half; SINK: the sun stays in the middle
 // and sinks toward the horizon through the day (Heat), the moon takes the arc.
@@ -109,10 +112,12 @@ struct FaceDef {
   PaintFn paint = nullptr;     // own painter instead of the fields above (they still set the moon)
   bool daySprite = true;       // false: the painter draws the sun itself, Home shows no sun sprite
   const lv_font_t *clockFont = nullptr;  // nullptr: font_clock_120; keep the same 148 px line height
+  bool weather = false;        // the sky follows the weather (skywx.h): clouds, rain, snow, fog, storms
   bool upper = false;          // the date in capitals, spaced out (the weather line would be too wide)
 };
 
 bool paintHeat(uint16_t *buf, int n, const Scene &s, const std::function<bool()> &stop);
+bool paintWeatherSky(uint16_t *buf, int n, const Scene &s, const std::function<bool()> &stop);
 
 const FaceDef FACES[] = {
     // 0: Sun ring (mock-up I), the default.
@@ -120,7 +125,7 @@ const FaceDef FACES[] = {
     // 1: Living sky (mock-up A).
     {.name = "Living sky", .bg = Bg::SKY, .path = Path::ARC, .sunR = 22, .moonR = 20.4f, .glowReach = 0.30f,
      .glowDay = 0.35f, .glowNight = 0.025f, .glowNightLit = 0.075f, .glowTint = 0xFFF1C8,
-     .day = {.dim = 0xE6ECF5}, .night = {.dim = 0xE6ECF5}, .lightBg = true},
+     .day = {.dim = 0xE6ECF5}, .night = {.dim = 0xE6ECF5}, .lightBg = true, .paint = paintWeatherSky, .weather = true},
     // 2: Plain.
     {.name = "Plain", .body = false},
     // 3: Heat (a coworker's concept, TEST ONLY): synthwave sunset with palms by day, a neon skyline
@@ -183,6 +188,8 @@ struct Scene {
   float bx, by;  // the sun or moon, in 480 px coordinates
   float moonAge = 0;   // 0..1 through the month (moon.h)
   bool south = false;  // south of the equator: the moon is seen upside down
+  int wx = skywx::NO_DATA;  // the weather a weather face shows (WMO code, skyCode())
+  int drift = 0;            // minutes: the clouds drift and the rain moves from one paint to the next
 };
 
 // The sun's (or moon's) position for a face at this time.
@@ -474,6 +481,33 @@ bool paintHeat(uint16_t *buf, int n, const Scene &s, const std::function<bool()>
   return true;
 }
 
+// The weather Living sky shows: the current conditions; when those are 3 hours old or more (Wi-Fi
+// down), the forecast for this hour; with no weather data at all, Mainly clear (2026-11-26).
+// Cached per weather update and hour (the UI thread asks every minute and for every preview).
+int skyTestCode = -1;  // serial X<code>: show this code instead (testing)
+uint32_t skyTestGen = 0;  // bumped when it changes, so Home repaints
+int skyCode() {
+  static uint32_t ver = ~0u;
+  static long hourKey = -1;
+  static int code = skywx::NO_DATA;
+  if (skyTestCode >= 0) return skyTestCode;
+  time_t t = time(nullptr);
+  if (weather::version() == ver && t / 3600 == hourKey) return code;
+  ver = weather::version();
+  hourKey = t / 3600;
+  code = skywx::NO_DATA;
+  weather::Data d;
+  if (weather::get(d)) {
+    if (t - d.fetched < 3 * 3600) {
+      code = d.now.code;
+    } else {
+      for (const weather::Hour &h : d.hours)
+        if (h.at <= t && t < h.at + 3600) { code = h.code; break; }
+    }
+  }
+  return code;
+}
+
 // Scene for the current minute.
 Scene sceneNow(int f, const struct tm &now) {
   float hour = now.tm_hour + now.tm_min / 60.0f;
@@ -485,7 +519,41 @@ Scene sceneNow(int f, const struct tm &now) {
   s.moonAge = moon::age(time(nullptr));
   s.south = lat < 0;
   bodyPos(f, st, hour, night, s.bx, s.by);
+  if (FACES[f].weather) {
+    s.wx = skyCode();
+    s.drift = now.tm_hour * 60 + now.tm_min;
+  }
   return s;
+}
+
+// Hides the sun or moon sprite: clouds cover it, and the painter draws it dimmed.
+bool cloudsCoverBody(const Scene &s) { return FACES[s.face].weather && skywx::coversBody(s.wx); }
+
+// Living sky with the weather (skywx.cpp). The previews have no sprite, so the body is painted
+// in there; on Home only when clouds cover it.
+bool paintWeatherSky(uint16_t *buf, int n, const Scene &s, const std::function<bool()> &stop) {
+  const FaceDef &F = FACES[s.face];
+  skywx::Frame f;
+  f.top = s.sky.topAt(s.hour);
+  f.bot = s.sky.at(s.hour);
+  f.hour = s.hour;
+  f.rise = s.sky.h[2];
+  f.set = s.sky.h[7];
+  f.night = s.night;
+  f.bx = s.bx;
+  f.by = s.by;
+  f.sunR = F.sunR;
+  f.moonR = F.moonR;
+  f.glowReach = F.glowReach;
+  f.glowDay = F.glowDay;
+  f.glowNight = F.glowNight;
+  f.glowNightLit = F.glowNightLit;
+  f.glowTint = F.glowTint;
+  f.moonAge = s.moonAge;
+  f.south = s.south;
+  f.code = s.wx;
+  f.drift = s.drift;
+  return skywx::paint(buf, n, f, n != W || cloudsCoverBody(s), stop);
 }
 
 // ---------- what Home shows ----------
@@ -564,7 +632,7 @@ struct HomePanel : Panel {
   lv_obj_t *bg = nullptr, *body = nullptr;
   lv_obj_t *clockLabel = nullptr, *dateLabel = nullptr, *stats = nullptr;
   lv_obj_t *wxRow = nullptr, *wxMain = nullptr, *wxRest = nullptr;  // "82° Clear • H 83 L 55"
-  uint32_t wxVer = ~0u;
+  uint32_t wxVer = ~0u, testGen = 0;
   int shownMinute = -1, builtFace = -1;
   bool builtNight = false;
   lv_obj_t *clockShadow = nullptr;
@@ -764,16 +832,17 @@ struct HomePanel : Panel {
     if (!weather::coords(lat, lon)) tz::fallbackCoords(lat, lon);
     int64_t key = ((int64_t)(now.tm_year * 366 + now.tm_yday) * 1440 + now.tm_hour * 60 + now.tm_min) * 1000003LL +
                   (int64_t)lroundf(lat * 100) * 40000 + lroundf(lon * 100) + (int64_t)f * 7919;
+    Scene s = sceneNow(f, now);
+    key = key * 131 + s.wx;  // a weather face repaints when the weather changes
     if (!FACES[f].body) key = -7 - f;  // doesn't change with time
     if (key == wantKey) return;
     wantKey = key;
-    Scene s = sceneNow(f, now);
     int hh = now.tm_hour, mm = now.tm_min;
     bgc.request(key, [s, hh, mm](uint16_t *buf) {
       uint32_t t0 = millis();
       paintScene(buf, W, s);
-      Serial.printf("[home] %02d:%02d %s %s, background %lu ms\n", hh, mm, FACES[s.face].name, s.night ? "night" : "day",
-                    (unsigned long)(millis() - t0));
+      Serial.printf("[home] %02d:%02d %s %s, weather %d, background %lu ms\n", hh, mm, FACES[s.face].name,
+                    s.night ? "night" : "day", FACES[s.face].weather ? s.wx : -1, (unsigned long)(millis() - t0));
     });
   }
 
@@ -790,9 +859,10 @@ struct HomePanel : Panel {
       updateStats();
     }
     struct tm now = clockx::local();
-    if (weather::version() != wxVer) {
+    if (weather::version() != wxVer || skyTestGen != testGen) {
+      testGen = skyTestGen;
       updateWeather();
-      shownMinute = -1;  // new coordinates move the sunrise/sunset
+      shownMinute = -1;  // new coordinates move the sunrise/sunset; new weather changes Living sky
     }
     // The minute, plus what else changes the text: the hour (a new time zone) and the formats.
     int shown = (((now.tm_mday * 24 + now.tm_hour) * 60 + now.tm_min) * 4 + tz::h24() * 2 + tz::dayFirst()) * 2 + clockx::trusted();
@@ -816,7 +886,8 @@ struct HomePanel : Panel {
 
     if (F.body) {
       Scene s = sceneNow(builtFace, now);
-      lv_obj_set_flag(body, LV_OBJ_FLAG_HIDDEN, !s.night && !F.daySprite);  // Heat paints its own sun
+      // Heat paints its own sun; under clouds Living sky paints the sun or moon dimmed.
+      lv_obj_set_flag(body, LV_OBJ_FLAG_HIDDEN, (!s.night && !F.daySprite) || cloudsCoverBody(s));
       const lv_image_dsc_t *spr = &sprite_sun;
       if (s.night) {
         spr = moon::sprite(FACES[builtFace].moonR, FACES[builtFace].moonHalo);
@@ -1257,3 +1328,10 @@ Screen *makeCustomize(HomePanel *home) { return new Customize(home); }
 }  // namespace
 
 Panel *makeHomePanel() { return new HomePanel(); }
+
+// Serial X<code>: show that weather on Living sky (X- goes back to the real weather).
+void homeTestSkyCode(int code) {
+  skyTestCode = code;
+  skyTestGen++;
+  Serial.printf("[home] sky weather %d%s\n", code >= 0 ? code : skyCode(), code >= 0 ? " (test)" : "");
+}
