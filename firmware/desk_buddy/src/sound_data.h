@@ -402,7 +402,7 @@ static const int16_t SUG_REFLEX_EARLY[] = {45, 113};
 static const int16_t SUG_REFLEX_RESULT[] = {150, 24, 44};
 static const int16_t SUG_DICE_ROLL[] = {52, 151, 152};
 static const int16_t SUG_COIN_FLIP[] = {53, 153, 154};
-static const int16_t SUG_STARTUP[] = {1, 0, 155, 156, 2};
+static const int16_t SUG_STARTUP[] = {87, 1, 0, 155, 156};
 static const int16_t SUG_WIFI_OK[] = {44, 111, -1};
 static const int16_t SUG_ERROR[] = {113, 45, -1};
 
@@ -431,7 +431,7 @@ static const EventInfo EVENTS[EVENT_COUNT] = {
   {"reflex_result", "Reflex time", 150, SUG_REFLEX_RESULT, 3},
   {"dice_roll", "Dice roll", 52, SUG_DICE_ROLL, 3},
   {"coin_flip", "Coin flip", 53, SUG_COIN_FLIP, 3},
-  {"startup", "Startup", 1, SUG_STARTUP, 5},
+  {"startup", "Startup", 87, SUG_STARTUP, 5},
   {"wifi_ok", "Wi-Fi connected", 44, SUG_WIFI_OK, 3},
   {"error", "Something failed", 113, SUG_ERROR, 3},
 };
