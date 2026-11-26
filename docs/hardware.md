@@ -42,6 +42,8 @@ Measured with serial `M` (see `docs/testing.md`):
 
 A KY-006 *passive* buzzer module (the bare buzzer, silkscreen S / middle / -, no transistor) can run straight off the UART1 plug:
 
+![Wiring: UART1 plug RX (GPIO 44) to the KY-006 S pin, GND to the − pin](img/buzzer-wiring.svg)
+
 | Buzzer | UART1 plug |
 |---|---|
 | S | RX (GPIO 44) |

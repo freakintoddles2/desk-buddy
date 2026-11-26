@@ -28,6 +28,12 @@ Pull down from the top edge for the fast travel tray (every panel in one row, an
 - Optional: a 3D-printed desk stand (`stand/`: STLs and assembly notes).
 - Optional: a KY-006 passive buzzer module for sounds: soft knob clicks, timer and reminder chimes, game sounds and a boot melody (see `docs/hardware.md`). The stand has rails for it.
 
+### Wiring the buzzer
+
+Two wires from the board's UART1 plug: **RX (GPIO 44) to the buzzer's S pin**, and **GND to its − pin**. Nothing else is connected. Use a bare KY-006 passive buzzer (no transistor); the board's cable (MX1.25 to Dupont) comes in the box. More in [docs/hardware.md](docs/hardware.md#optional-buzzer).
+
+![Wiring: CrowPanel UART1 plug RX (GPIO 44) to the KY-006 S pin, GND to the − pin; 5V, TX and the middle pin not connected](docs/img/buzzer-wiring.svg)
+
 ## Install it
 
 **Easiest:** open **https://freakintoddles2.github.io/desk-buddy/** in Chrome or Edge, plug the board in, and click Install. The [getting started guide](https://freakintoddles2.github.io/desk-buddy/guide.html) walks through it, with screenshots.
