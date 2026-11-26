@@ -12,7 +12,6 @@ Firmware for the Elecrow CrowPanel 2.1" rotary display (ESP32-S3, 8 MB PSRAM, 16
 - `sound-lab.html`: designs buzzer sounds and exports a `sounds.h` (the buzzer add-on is optional).
 - `stand/`: printable desk stand (STLs and print notes).
 - `mockups/`: design mock-ups that decisions point back to ("option B in reminder-mockups.html").
-- `archive/`: removed features with restore notes.
 - `site/`: the GitHub Pages site (web installer with ESP Web Tools, getting started guide). `site/build.sh` assembles `_site/` from it plus `display.html`, `sound-lab.html` and the built firmware; `.github/workflows/site.yml` builds and publishes on every push to `main`.
 - `docs/`: `hardware.md`, `architecture.md`, `lessons.md`, `testing.md`, `ux.md`, `adding-a-face.md`.
 

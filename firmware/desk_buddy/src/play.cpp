@@ -1,6 +1,6 @@
-// Play panel (LISTS.play in display.html) and its games: coin, dice, ring pong, reflex. The
-// Spin the wheel was removed (archive/spin_wheel). Pong and Reflex are games: swipes are ignored, reminders wait, and
-// the idle return to Home leaves them alone.
+// Play panel (LISTS.play in display.html) and its games: coin, dice, ring pong, reflex. Pong
+// and Reflex are games: swipes are ignored, reminders wait, and the idle return to Home leaves
+// them alone.
 #include <atomic>
 #include <esp_heap_caps.h>
 #include <esp_random.h>

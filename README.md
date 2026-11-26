@@ -111,7 +111,6 @@ Not done yet:
 | `site/` | The GitHub Pages site: web installer, getting started guide (`site/build.sh` assembles it; `.github/workflows/site.yml` publishes it) |
 | `mockups/` | Design mock-ups behind the current screens |
 | `stand/` | Printable desk stand (STLs and assembly notes) |
-| `archive/` | Removed features with restore notes (Spin the wheel) |
 | `docs/` | Hardware, architecture, testing, interaction rules, lessons learned, adding a face, reference links |
 
 ## Credits and licenses
