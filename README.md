@@ -62,6 +62,12 @@ python3 -m http.server 8767 --bind 127.0.0.1
 
 Arrows turn and swipe, Enter presses, T opens the fast travel tray, U the Home customize sheet.
 
+## Sound lab
+
+**https://freakintoddles2.github.io/desk-buddy/sound-lab.html** (or open `sound-lab.html` locally)
+
+Pick the sound for each thing the desk buddy does (knob clicks, timers, reminders, games, the boot melody) from suggestions or the whole library of about 160 sounds, or make your own on a piano-roll editor. With the board plugged in by USB (Chrome or Edge), click **Connect** to hear sounds on the real buzzer, **Get from desk buddy** to load what it plays now, and **Send to desk buddy** to put your choices on it. The same choices are on the device in Settings > Sound > Sounds. Needs the optional KY-006 buzzer to hear anything on the device.
+
 ## Network and privacy
 
 - The Wi-Fi password and your settings are stored only on the device's flash.
